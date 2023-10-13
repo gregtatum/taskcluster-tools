@@ -1,0 +1,11 @@
+{
+  "name": "taskcluster-webext",
+  "version": "1.0.0",
+  "main": "index.js",
+  "author": "Greg Tatum",
+  "type": "module",
+  "dependencies": {
+    "@types/webextension-polyfill": "^0.10.4",
+    "web-ext": "^7.8.0"
+  }
+}
