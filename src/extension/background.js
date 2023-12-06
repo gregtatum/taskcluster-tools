@@ -77,7 +77,7 @@ async function openTaskGroup() {
   // const profilerTab = await browser.tabs.create({url: "https://profiler.firefox.com/from-post-message/"})
   const profilerTab = await browser.tabs.create({url: "http://localhost:4242/from-post-message/"})
   await browser.tabs.executeScript({
-    file: "src/profiler_content.js"
+    file: "src/extension/profiler_content.js"
     // code: `console.log('Injected script:', window.location.href);`,
   })
   if (!profilerTab.id) {

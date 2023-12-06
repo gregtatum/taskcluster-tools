@@ -11,7 +11,11 @@ const elements = {
 
 setupHandlers()
 getTasks()
-  .then(render).catch(error => console.error(error))
+  .then((tasks) => {
+    if (tasks) {
+      render(tasks);
+    }
+  }).catch(error => console.error(error))
 
 /**
  * @param {string} id
@@ -289,10 +293,13 @@ function doMergeTaskTypes(tasks, mergeTaskType) {
 }
 
 /**
- * @returns {Promise<Task[]>}
+ * @returns {Promise<Task[] | null>}
  */
 async function getTasks() {
   const taskGroupIds = getTaskGroupIds();
+  if (!taskGroupIds.length) {
+    return null;
+  }
 
   // Validate the taskGroupIds
   if (taskGroupIds.length && taskGroupIds.some(id => !isTaskGroupIdValid(id))) {
