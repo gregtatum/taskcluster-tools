@@ -21,7 +21,9 @@ body {
 
 #controls {
   /* Create a stacking context */
-  position: relative;
+  position: absolute;
+  left: 10px;
+  top: 0px;
 }
 
 svg {
@@ -49,4 +51,32 @@ svg {
 
 .closeButton:hover {
   background-color: #333;
+}
+
+.context-menu {
+  position: absolute;
+  font-size: 14px;
+  background-color: #fff;
+  border: 1px solid #ccc;
+  box-shadow: 0 2px 9px rgba(0, 0, 0, 0.3);
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  padding: 2px;
+  border-radius: 3px;
+}
+
+
+a.context-menu-item {
+  text-decoration: none;
+  color: #000;
+  cursor: pointer;
+  padding: 5px;
+  transition: background-color 0.3s;
+  display: inline-block;
+  border-radius: 3px;
+}
+
+.context-menu-item:hover {
+  background-color: #f0f0f0;
 }
