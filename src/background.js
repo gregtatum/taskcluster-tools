@@ -51,7 +51,7 @@ async function openTaskGroup() {
     return;
   }
 
-  const results = url.pathname.match(/^\/tasks\/groups\/([a-zA-Z0-9-]+)\b/)
+  const results = url.pathname.match(/^\/tasks\/groups\/([a-zA-Z0-9_-]+)\b/)
   if (!results) {
     reportError("Could not find a task group in the path: " + url.pathname)
     return;
@@ -74,8 +74,8 @@ async function openTaskGroup() {
   log(taskGroup)
 
 
-  // const profilerTab = await browser.tabs.create({url: "https://profiler.firefox.com/from-addon/"})
-  const profilerTab = await browser.tabs.create({url: "http://localhost:4242/from-addon/"})
+  const profilerTab = await browser.tabs.create({url: "https://profiler.firefox.com/from-post-message/"})
+  // const profilerTab = await browser.tabs.create({url: "http://localhost:4242/from-post-message/"})
   await browser.tabs.executeScript({
     file: "src/profiler_content.js"
     // code: `console.log('Injected script:', window.location.href);`,
@@ -100,16 +100,31 @@ function getProfile(taskGroup, url) {
   const profileString = '{"meta":{"interval":1000,"startTime":0,"processType":0,"product":"Taskcluster","stackwalk":0,"version":27,"preprocessedProfileVersion":47,"physicalCPUs":0,"logicalCPUs":0,"symbolicationNotSupported":true,"markerSchema":[],"usesOnlyOneStackType":true},"libs":[],"threads":[{"processType":"default","processName":"Taskcluster","processStartupTime":0,"processShutdownTime":null,"registerTime":0,"unregisterTime":null,"pausedRanges":[],"name":"","isMainThread":false,"pid":"0","tid":0,"samples":{"weightType":"samples","weight":null,"stack":[],"time":[],"length":0},"markers":{"data":[],"name":[],"startTime":[],"endTime":[],"phase":[],"category":[],"length":0},"stackTable":{"frame":[0],"prefix":[null],"category":[0],"subcategory":[0],"length":1},"frameTable":{"address":[-1],"inlineDepth":[0],"category":[null],"subcategory":[0],"func":[0],"nativeSymbol":[null],"innerWindowID":[0],"implementation":[null],"line":[null],"column":[null],"length":1},"funcTable":{"isJS":[false],"relevantForJS":[false],"name":[0],"resource":[-1],"fileName":[null],"lineNumber":[null],"columnNumber":[null],"length":1},"resourceTable":{"lib":[],"name":[],"host":[],"type":[],"length":0},"nativeSymbols":{"libIndex":[],"address":[],"name":[],"functionSize":[],"length":0}}],"counters":[]}';
   const profile = JSON.parse(profileString);
 
-  const sortedTasks = taskGroup.tasks.map(task => ({
-    task,
-    start: new Date(task.status.runs[0].started).valueOf(),
-    end: new Date(task.status.runs[0].resolved).valueOf(),
-  }));
+  log(taskGroup)
+  const sortedTasks = taskGroup.tasks.map(task => {
+    const { runs } = task.status;
+    if (!runs || !runs.length) {
+      return { task, start: null, end: null }
+    }
+    return {
+      task,
+      start: new Date(runs[0].started).valueOf(),
+      end: new Date(runs[0].resolved).valueOf(),
+    }
+  });
 
-  sortedTasks.sort((ta, tb) => ta.start - tb.start);
+  const startTime = Math.min(...sortedTasks.map(t => t.start ?? Infinity));
+  const endTime = Math.max(...sortedTasks.map(t=>t.end ?? -Infinity));
 
-  const startTime = Math.min(...sortedTasks.map(t => t.start));
-  const endTime = Math.max(...sortedTasks.map(t=>t.end));
+  sortedTasks.sort((ta, tb) => {
+    if (!ta.start) {
+      return -1
+    }
+    if (!tb.start) {
+      return 1
+    }
+    return ta.start - tb.start
+  });
 
   const profileName = `Task Group ${taskGroup.taskGroupId} - ${new Date(startTime).toLocaleDateString()}`
 
@@ -173,12 +188,15 @@ function getProfile(taskGroup, url) {
   const taskStringIndex = 0;
 
   for (const {start, end, task} of sortedTasks) {
+    if (start === null || end === null) {
+      continue
+    }
     markers.category.push(0);
     markers.startTime.push(start - startTime);
     markers.endTime.push(end - startTime);
     const durationMarker = 1
     const instantMarker = 2
-    markers.phase.push(endTime ? durationMarker : instantMarker);
+    markers.phase.push(durationMarker);
     markers.name.push(taskStringIndex);
 
     markers.data.push({

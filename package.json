@@ -4,8 +4,13 @@
   "main": "index.js",
   "author": "Greg Tatum",
   "type": "module",
+  "scripts": {
+    "start": "web-ext run --firefox-profile fx-profile2 --profile-create-if-missing",
+    "start-greg": "web-ext run -f /Applications/FxNightly-en.app/Contents/MacOS/firefox --firefox-profile fx-profile2 --profile-create-if-missing",
+    "build": "web-ext build --overwrite-dest"
+  },
   "dependencies": {
     "@types/webextension-polyfill": "^0.10.4",
-    "web-ext": "^7.8.0"
+    "web-ext": "^7.9.0"
   }
 }
