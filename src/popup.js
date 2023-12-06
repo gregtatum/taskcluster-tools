@@ -1,5 +1,8 @@
 log("popup.js")
 
+/**
+ * @param {any[]} args
+ */
 function log(...args) {
   console.log("%c[fxp-taskcluster]%c", "color: #0ff", "color: inherit", ...args)
 }
@@ -32,7 +35,7 @@ class Panel {
     this.elements.noTask.hidden = true;
   }
 
-  onClick = (event) => {
+  onClick = () => {
     log("Clicked to open in taskcluster.");
     browser.runtime.sendMessage({ name: "open-taskgroup-in-profiler" })
   }
