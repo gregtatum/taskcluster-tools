@@ -2,6 +2,8 @@
 
 A visualization of taskcluster data.
 
+https://gregtatum.github.io/taskcluster-tools
+
 # Taskcluster WebExt
 
 This project is a tool to visualize task graphs in the Firefox Profiler.
