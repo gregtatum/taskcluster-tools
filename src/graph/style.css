@@ -29,3 +29,24 @@ svg {
   top: 0;
   left: 0;
 }
+
+#controls > * {
+  margin: 10px 0;
+}
+
+.closeButton {
+  background-color: #646464;
+  color: white;
+  border: none;
+  padding: 1px 5px;
+  font-size: 11px;
+  cursor: pointer;
+  border-radius: 13px;
+  margin: -2px 7px -2px 3px;
+  position: relative;
+  top: -1px;
+}
+
+.closeButton:hover {
+  background-color: #333;
+}

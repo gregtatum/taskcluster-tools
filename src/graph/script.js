@@ -5,6 +5,7 @@ const elements = {
   mergeChunks: /** @type {HTMLInputElement} */ (getElement("mergeChunks")),
   graph: getElement("graph"),
   info: getElement("info"),
+  controls: getElement("controls"),
   infoMessage: getElement("info-message"),
 }
 
@@ -58,6 +59,35 @@ function setupHandlers() {
     urlParams.set('mergeChunks', elements.mergeChunks.checked.toString())
     changeLocation(urlParams)
   })
+
+  for (const taskGroupId of getTaskGroupIds()) {
+    const div = document.createElement("div");
+    const closeButton = document.createElement("button");
+    const a = document.createElement("a");
+
+    closeButton.className = "closeButton"
+    closeButton.setAttribute("title", "Remove the task group");
+    closeButton.innerText = "𝗫"
+    closeButton.addEventListener("click", () => {
+      let ids = getTaskGroupIds()
+      ids = ids.filter(id => id !== taskGroupId);
+
+      const urlParams = new URLSearchParams(window.location.search);
+      urlParams.set('taskGroupIds', ids.join(','))
+      changeLocation(urlParams)
+    })
+    div.appendChild(closeButton);
+
+    a.innerText = taskGroupId;
+    a.setAttribute(
+      "href",
+      `https://firefox-ci-tc.services.mozilla.com/tasks/groups/${taskGroupId}`
+    );
+    div.appendChild(a);
+
+    // Add it to the page.
+    elements.controls.insertBefore(div, elements.mergeChunks.parentElement);
+  }
 }
 
 /**
@@ -93,7 +123,6 @@ function getTaskGroupIds() {
 
   // Parse the taskGroupId values into an array
   const taskGroupIds = taskGroupIdParam.split(',');
-  console.log(taskGroupIds);
   return taskGroupIds
 }
 
@@ -102,6 +131,7 @@ function getTaskGroupIds() {
  */
 async function getTasks() {
   const taskGroupIds = getTaskGroupIds();
+  console.log(taskGroupIds);
 
   // Validate the taskGroupIds
   if (taskGroupIds.length && taskGroupIds.some(id => !isTaskGroupIdValid(id))) {
@@ -132,23 +162,49 @@ async function getTasks() {
     return combinedTasks;
   }
 
+  /** @type {Task[]} */
   const mergedTasks = [];
-  const labelToTask = new Map();
+  /** @type {Map<string, Task>} */
+  const labelToMergedTask = new Map();
+  /** @type {Map<string, string>} */
   const taskIdToMergedId = new Map();
   for (const task of combinedTasks) {
     const { label } = task.task.tags
+
     const chunkResult = label?.match(/(.*)-\d+\/\d+$/);
     if (chunkResult) {
+      // This is a chunk that needs merging.
       const newLabel = chunkResult[1];
-      const existingTask = labelToTask.get(newLabel);
-      if (existingTask) {
-        existingTask
+      const mergedTask = labelToMergedTask.get(newLabel);
+
+      if (mergedTask) {
+        // The task exists already, add the runs to it.
+        taskIdToMergedId.set(task.status.taskId, mergedTask.status.taskId)
+
+        // Merge the runs.
+        mergedTask.status.runs = [
+          ...(mergedTask.status.runs ?? []),
+          ...(task.status.runs ?? []),
+        ];
       } else {
+        // Create the start of a merged task.
         task.task.tags.label = newLabel;
-        labelToTask.set(newLabel, task);
+        labelToMergedTask.set(newLabel, task);
+        mergedTasks.push(task);
       }
+    } else {
+      // This is not a chunk, no merging needing.
+      mergedTasks.push(task)
     }
   }
+
+  for (const task of mergedTasks) {
+    task.task.dependencies = task.task.dependencies.map(id =>
+      taskIdToMergedId.get(id) ?? id
+    );
+  }
+
+  return mergedTasks;
 }
 
 /**
@@ -156,9 +212,24 @@ async function getTasks() {
  */
 function render(tasks) {
   if (tasks.length === 0) {
+    elements.infoMessage.innerText = "There were no tasks in the task group";
     return;
   }
+  console.log("tasks", tasks)
   elements.info.style.display = "none"
+
+  for (const task of tasks) {
+    const match = task.task.tags.label?.match(/^all-(\w+)-(\w+)$/);
+    if (match) {
+      const src = match[1];
+      const trg = match[2];
+      const div = document.createElement("div")
+      div.innerHTML = `Training run: <b>${src}-${trg}</b>`
+
+      elements.controls.insertBefore(div, elements.controls.children[1]);
+      break;
+    }
+  }
 
   // Specify the dimensions of the chart.
   const width = window.innerWidth;
@@ -186,9 +257,30 @@ function render(tasks) {
     if (!runs) {
       throw new Error("Expected a run.");
     }
-    const start = new Date(runs[0].started).valueOf();
-    const end = new Date(runs[0].resolved).valueOf();
-    const duration = end - start;
+
+    let duration = 0;
+    let start = Infinity;
+    let end = 0;
+
+    for (const {started, reasonResolved, resolved} of runs) {
+      if (reasonResolved === "completed") {
+        const runStart = new Date(started).valueOf()
+        const runEnd = new Date(resolved).valueOf();
+        duration += runEnd - runStart
+        start = Math.min(start, runStart);
+        end = Math.max(end, runEnd);
+      }
+    }
+    if (start === Infinity) {
+      throw new Error("Could not find a start.");
+    }
+    if (end === 0) {
+      throw new Error("Could not find an end.");
+    }
+
+    // const start = new Date(runs[0].started).valueOf();
+    // const end = new Date(runs[0].resolved).valueOf();
+    // const duration = end - start;
 
     const label = task.task.tags.label ?? task.task.metadata.name
     const tag = getTaskType(task);
@@ -216,7 +308,11 @@ function render(tasks) {
     if (!runs || !runs.length || !runs[0].started || !runs[0].resolved) {
       return null;
     }
-    return makeNode(task)
+    // Only run on completed runs.
+    if (runs.some(run => run.reasonResolved === "completed")) {
+      return makeNode(task)
+    }
+    return null;
   });
 
   // For some reason typescript isn't inferring the filter correctly, but this does
@@ -227,6 +323,8 @@ function render(tasks) {
     }
     return node
   })
+
+  console.log("Nodes", nodes);
 
   /** @type {number[]} */
   const durations = nodes.map((node) => node.duration);
@@ -244,8 +342,8 @@ function render(tasks) {
     node.dependencies
       .filter((dependency) => nodes.some((node) => node.id === dependency))
       .map((dependency) => ({
-        source: node.id,
-        target: dependency,
+        source: dependency,
+        target: node.id,
       })),
   );
 
@@ -361,6 +459,12 @@ function render(tasks) {
     })
     .on("mouseout", (event, d) => {
       label.filter(labelD => labelD.id === d.id).style("opacity", 0);
+    })
+    .on("dblclick", (event, d) => {
+      window.open(
+        `https://firefox-ci-tc.services.mozilla.com/tasks/${d.id}`,
+        '_blank'
+      )
     });
 
   // Add a drag behavior.
@@ -385,14 +489,13 @@ function render(tasks) {
      .style("font-family", "sans-serif")
      .style("filter", "url(#solid)");
 
-    svg
-     .append("defs")
-     .html(`
-       <marker id="arrowhead" viewBox="0 -5 10 10" refX="8" refY="0" markerWidth="6" markerHeight="6" orient="auto">
-         <path d="M0,-5L10,0L0,5" fill="#999" />
-       </marker>
-     `);
-
+  svg
+    .append("defs")
+    .html(`
+      <marker id="arrowhead" viewBox="0 -5 10 10" refX="8" refY="0" markerWidth="6" markerHeight="6" orient="auto">
+        <path d="M0,-5L10,0L0,5" fill="#999" />
+      </marker>
+    `);
 
   // Reheat the simulation when drag starts, and fix the subject position.
   function dragstarted(event) {
