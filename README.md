@@ -1,3 +1,7 @@
+# Taskcluster Graph
+
+A visualization of taskcluster data.
+
 # Taskcluster WebExt
 
 This project is a tool to visualize task graphs in the Firefox Profiler.
