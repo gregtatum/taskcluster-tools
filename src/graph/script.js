@@ -115,7 +115,7 @@ function setupHandlers() {
     div.appendChild(span);
 
     const b = document.createElement("b");
-    b.innerText = mergeTaskType;
+    b.innerText = `"${mergeTaskType}"`;
     div.appendChild(b);
 
     // Add it to the page.
@@ -170,85 +170,21 @@ function getTaskGroupIds() {
 }
 
 /**
- * @returns {Promise<Task[]>}
+ * @param {Task[]} tasks
+ * @return {Task[]}
  */
-async function getTasks() {
-  const taskGroupIds = getTaskGroupIds();
-  console.log(taskGroupIds);
-
-  // Validate the taskGroupIds
-  if (taskGroupIds.length && taskGroupIds.some(id => !isTaskGroupIdValid(id))) {
-    const p = document.createElement("p")
-    p.innerText = "A task group id was not valid, " + JSON.stringify(taskGroupIds)
-    document.body.appendChild(p)
-    throw new Error(p.innerText);
-  }
-
-  console.log("Using the following taskGroupIds", taskGroupIds);
-
-  elements.infoMessage.innerText = "Fetching the tasks…"
-
-  /** @type {Array<Promise<TaskGroup>>} */
-  const taskGroupPromises = taskGroupIds.map(id =>
-    fetch(`https://firefox-ci-tc.services.mozilla.com/api/queue/v1/task-group/${id}/list`)
-      .then((response) => response.json())
-  );
-
-  const combinedTasks = []
-  for (const {tasks} of await Promise.all(taskGroupPromises)) {
-    for (const task of tasks) {
-      combinedTasks.push(task)
-    }
-  }
-  const mergeTaskTypes = getMergeTaskTypes()
-  const isMergeChunks = getIsMergeChunks()
-
-  if (!isMergeChunks && !mergeTaskTypes) {
-    return combinedTasks;
-  }
-
-  // Figure out which taskIds are actually present.
-  const presentTaskIds = new Set();
-  for (const task of combinedTasks) {
-    const { taskId } = task.status
-    presentTaskIds.add(taskId);
-  }
-
-  // Remove any dependencies that aren't present.
-  for (const task of combinedTasks) {
-    task.task.dependencies = task.task.dependencies.filter(
-      id => presentTaskIds.has(id)
-    )
-  }
-
-  /** @type {Map<string, string[]>} */
-  const dependentsMap = new Map();
-  for (const task of combinedTasks) {
-    const { taskId } = task.status
-    for (const dependency of task.task.dependencies) {
-      let list = dependentsMap.get(dependency);
-      if (!list) {
-        list = [];
-        dependentsMap.set(dependency, list);
-      }
-      list.push(taskId)
-    }
-  }
-  for (const list of dependentsMap.values()) {
-    list.sort((a,b) => a.localeCompare(b))
-  }
-
+function mergeChunks(tasks) {
   /** @type {Task[]} */
   const mergedTasks = [];
   /** @type {Map<string, Task>} */
   const keyToMergedTask = new Map();
   /** @type {Map<string, string>} */
   const taskIdToMergedId = new Map();
-  for (const task of combinedTasks) {
+  for (const task of tasks) {
     const { label } = task.task.tags
 
     const chunkResult = label?.match(/(.*)-\d+\/\d+$/);
-    if (chunkResult && isMergeChunks) {
+    if (chunkResult) {
       // This is a chunk that needs merging.
       const newLabel = chunkResult[1];
       const key = "(chunk)-" + newLabel;
@@ -273,44 +209,9 @@ async function getTasks() {
         mergedTasks.push(task);
       }
     } else {
-      let isMerged = false;
-      for (const mergeTaskType of (mergeTaskTypes ?? [])) {
-        if (label?.startsWith(mergeTaskType + "-")) {
-          const dependents = dependentsMap.get(task.status.taskId) ?? [];
-          // Create a key that knows about dependents.
-          const key = mergeTaskType + "-" + dependents.join(",")
-          const mergedTask = keyToMergedTask.get(key);
-
-          if (mergedTask) {
-            console.log(`!!! merge task (add)`, key, task.task.tags.label);
-            // The task exists already, add the runs to it.
-            taskIdToMergedId.set(task.status.taskId, mergedTask.status.taskId)
-
-            // Only apply the merged label when things are merged.
-            mergedTask.task.tags.label = mergeTaskType + " (merged)";
-
-
-            // Merge the runs.
-            mergedTask.status.runs = [
-              ...(mergedTask.status.runs ?? []),
-              ...(task.status.runs ?? []),
-            ];
-          } else {
-            console.log(`!!! merge task (first)`, key, task.task.tags.label);
-            keyToMergedTask.set(key, task);
-            mergedTasks.push(task);
-          }
-
-          isMerged = true;
-          break;
-        }
-
-      }
-      if (!isMerged) {
-        console.log(`!!! unmerged`, task.task.tags.label);
-        // No merging is needed.
-        mergedTasks.push(task)
-      }
+      console.log(`!!! merge chunk (unmerged)`, task.task.tags.label);
+      // No merging is needed.
+      mergedTasks.push(task)
     }
   }
 
@@ -321,6 +222,163 @@ async function getTasks() {
   }
 
   return mergedTasks;
+}
+
+/**
+ * @param {Task[]} tasks
+ * @param {string} mergeTaskType
+ * @return {Task[]}
+ */
+function doMergeTaskTypes(tasks, mergeTaskType) {
+  /** @type {Task[]} */
+  const mergedTasks = [];
+  /** @type {Map<string, Task>} */
+  const keyToMergedTask = new Map();
+  /** @type {Map<string, string>} */
+  const taskIdToMergedId = new Map();
+  const dependentsMap = getDependentsMap(tasks)
+
+  for (const task of tasks) {
+    debugger
+    const { label } = task.task.tags
+
+    let isMerged = false;
+    if (label?.startsWith(mergeTaskType + "-")) {
+      const dependents = dependentsMap.get(task.status.taskId) ?? [];
+      // Create a key that knows about dependents.
+      const key = mergeTaskType + "-" + dependents.join(",")
+      const mergedTask = keyToMergedTask.get(key);
+
+      if (mergedTask) {
+        console.log(`!!! (merge types) add`, key, task.task.tags.label);
+        // The task exists already, add the runs to it.
+        taskIdToMergedId.set(task.status.taskId, mergedTask.status.taskId)
+
+        // Only apply the merged label when things are merged.
+        mergedTask.task.tags.label = mergeTaskType + " (merged)";
+
+
+        // Merge the runs.
+        mergedTask.status.runs = [
+          ...(mergedTask.status.runs ?? []),
+          ...(task.status.runs ?? []),
+        ];
+      } else {
+        console.log(`!!! (merge types) first`, key, task.task.tags.label);
+        keyToMergedTask.set(key, task);
+        mergedTasks.push(task);
+      }
+
+      isMerged = true;
+    }
+
+    if (!isMerged) {
+      console.log(`!!! (merge types) unmerged`, task.task.tags.label);
+      // No merging is needed.
+      mergedTasks.push(task)
+    }
+  }
+
+  for (const task of mergedTasks) {
+    task.task.dependencies = task.task.dependencies.map(id =>
+      taskIdToMergedId.get(id) ?? id
+    );
+  }
+
+  return mergedTasks;
+}
+
+/**
+ * @returns {Promise<Task[]>}
+ */
+async function getTasks() {
+  const taskGroupIds = getTaskGroupIds();
+
+  // Validate the taskGroupIds
+  if (taskGroupIds.length && taskGroupIds.some(id => !isTaskGroupIdValid(id))) {
+    const p = document.createElement("p")
+    p.innerText = "A task group id was not valid, " + JSON.stringify(taskGroupIds)
+    document.body.appendChild(p)
+    throw new Error(p.innerText);
+  }
+
+  console.log("Using the following taskGroupIds", taskGroupIds);
+
+  elements.infoMessage.innerText = "Fetching the tasks…"
+
+  /** @type {Array<Promise<TaskGroup>>} */
+  const taskGroupPromises = taskGroupIds.map(id =>
+    fetch(`https://firefox-ci-tc.services.mozilla.com/api/queue/v1/task-group/${id}/list`)
+      .then((response) => response.json())
+  );
+
+  /** @type {Task[]} */
+  let tasks = []
+  for (const {tasks: tasksList} of await Promise.all(taskGroupPromises)) {
+    for (const task of tasksList) {
+      tasks.push(task)
+    }
+  }
+
+  mutateAndRemoveMissingDependencies(tasks)
+
+  if(getIsMergeChunks()) {
+    tasks = mergeChunks(tasks)
+  }
+
+  mutateAndRemoveMissingDependencies(tasks)
+
+  const mergeTaskTypes = getMergeTaskTypes()
+  if (mergeTaskTypes) {
+    for (const mergeTaskType of mergeTaskTypes) {
+      tasks = doMergeTaskTypes(tasks, mergeTaskType)
+    }
+  }
+
+  return tasks;
+}
+
+/**
+ * @param {Task[]} tasks
+ */
+function mutateAndRemoveMissingDependencies(tasks) {
+  // Figure out which taskIds are actually present.
+  const presentTaskIds = new Set();
+  for (const task of tasks) {
+    const { taskId } = task.status
+    presentTaskIds.add(taskId);
+  }
+
+  // Remove any dependencies that aren't present.
+  for (const task of tasks) {
+    task.task.dependencies = task.task.dependencies.filter(
+      id => presentTaskIds.has(id)
+    )
+  }
+}
+
+/**
+ * @param {Task[]} tasks
+ * @return {Map<string, string[]>}
+ */
+function getDependentsMap(tasks) {
+  /** @type {Map<string, string[]>} */
+  const dependentsMap = new Map();
+  for (const task of tasks) {
+    const { taskId } = task.status
+    for (const dependency of task.task.dependencies) {
+      let list = dependentsMap.get(dependency);
+      if (!list) {
+        list = [];
+        dependentsMap.set(dependency, list);
+      }
+      list.push(taskId)
+    }
+  }
+  for (const list of dependentsMap.values()) {
+    list.sort((a,b) => a.localeCompare(b))
+  }
+  return dependentsMap
 }
 
 /**
@@ -360,6 +418,21 @@ function render(tasks) {
    */
   function getTaskType(task) {
     return task.task.tags.label?.split("-")[0] ?? ""
+  }
+
+  /**
+   * @param {Task} task
+   */
+  function getOuterTaskType(task) {
+    const { label } = task.task.tags
+    if (!label) {
+      return "";
+    }
+    const parts = label.split("-");
+    if (parts.length < 2) {
+      return "";
+    }
+    return parts.slice(0, 2).join("-")
   }
 
   const types = [...new Set(tasks.map(task => getTaskType(task)))]
@@ -410,6 +483,7 @@ function render(tasks) {
       start,
       end,
       taskType,
+      outerTaskType: getOuterTaskType(task),
       dependencies: task.task.dependencies,
       group: types.findIndex(type => type === taskType),
     };
@@ -589,6 +663,39 @@ function render(tasks) {
       event.preventDefault();
       const node = /** @type {Node} */(/** @type {any} */ (d));
 
+      const actions = [
+        {
+          label: "Open in TaskCluster",
+          action() {
+            window.open(
+              `https://firefox-ci-tc.services.mozilla.com/tasks/${node.id}`,
+              '_blank'
+            )
+          }
+        },
+        getMergeAction(node.taskType),
+      ];
+      if (node.outerTaskType) {
+        actions.push(getMergeAction(node.outerTaskType));
+      }
+
+      /**
+       * @param {string} taskType
+       */
+      function getMergeAction(taskType) {
+        return {
+          label: `Merge "${taskType}" nodes`,
+          action() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const mergesRaw = urlParams.get('mergeTaskType');
+            const merges = mergesRaw ? mergesRaw.split(",") : [];
+            merges.push(taskType);
+            urlParams.set('mergeTaskType', merges.join(','))
+            changeLocation(urlParams)
+          }
+        }
+      }
+
       // Create a context menu
       const contextMenu = d3.select("body")
         .append("div")
@@ -596,28 +703,7 @@ function render(tasks) {
         .style("left", (event.pageX + 5) + "px")
         .style("top", (event.pageY - 5) + "px")
         .selectAll("a")
-          .data([
-            {
-              label: "Open in TaskCluster",
-              action() {
-                window.open(
-                  `https://firefox-ci-tc.services.mozilla.com/tasks/${node.id}`,
-                  '_blank'
-                )
-              }
-            },
-            {
-              label: `Merge ${node.taskType} nodes`,
-              action() {
-                const urlParams = new URLSearchParams(window.location.search);
-                const mergesRaw = urlParams.get('mergeTaskType');
-                const merges = mergesRaw ? mergesRaw.split(",") : [];
-                merges.push(node.taskType);
-                urlParams.set('mergeTaskType', merges.join(','))
-                changeLocation(urlParams)
-              }
-            }
-          ])
+          .data(actions)
           .enter()
           .append("a")
           .attr("href", "#")
