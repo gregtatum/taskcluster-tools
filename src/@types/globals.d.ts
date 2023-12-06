@@ -53,7 +53,7 @@ declare interface Task {
     };
     tags: {
       kind: string; // "all";
-      label: string; // "all-ru-en";
+      label?: string; // "all-ru-en";
       createdForUser: string; // "eu9ene@users.noreply.github.com";
       "worker-implementation": string; // "succeed";
     };
