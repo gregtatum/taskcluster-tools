@@ -3,6 +3,7 @@
 const elements = {
   taskGroup: /** @type {HTMLInputElement} */ (getElement("taskGroup")),
   mergeChunks: /** @type {HTMLInputElement} */ (getElement("mergeChunks")),
+  server: /** @type {HTMLInputElement} */ (getElement("server")),
   graph: getElement("graph"),
   info: getElement("info"),
   controls: getElement("controls"),
@@ -41,6 +42,21 @@ function changeLocation(urlParams) {
 }
 
 function setupHandlers() {
+  elements.server.value = getServer();
+  elements.server.addEventListener('keydown', (event) => {
+    if (event.key === 'Enter') {
+      try {
+        const url = new URL(elements.server.value);
+        const validatedUrl = url.toString();
+        const urlParams = new URLSearchParams(window.location.search);
+        urlParams.set('server', validatedUrl)
+        changeLocation(urlParams)
+      } catch {
+
+      }
+    }
+  })
+
   elements.taskGroup.addEventListener('keydown', (event) => {
     const taskGroupId = /** @type {HTMLInputElement } */ elements.taskGroup.value
     if (event.key === 'Enter' && taskGroupId) {
@@ -89,7 +105,7 @@ function setupHandlers() {
     a.innerText = taskGroupId;
     a.setAttribute(
       "href",
-      `https://firefox-ci-tc.services.mozilla.com/tasks/groups/${taskGroupId}`
+      `${getServer()}/tasks/groups/${taskGroupId}`
     );
     div.appendChild(a);
 
@@ -144,6 +160,20 @@ function getMergeTaskTypes() {
     return [...new Set(text.split(","))]
   }
   return null;
+}
+
+function getServer() {
+  const urlParams = new URLSearchParams(window.location.search);
+  const text = urlParams.get("server")
+  if (!text) {
+    return "https://firefox-ci-tc.services.mozilla.com"
+  }
+  try {
+    const url = new URL(text);
+    return url.toString();
+  } catch(error) {
+    return "https://firefox-ci-tc.services.mozilla.com";
+  }
 }
 
 
@@ -203,17 +233,17 @@ function mergeChunks(tasks) {
           ...(mergedTask.status.runs ?? []),
           ...(task.status.runs ?? []),
         ];
-        console.log(`!!! merge chunk (add)`, key, task.task.tags.label);
+        mergedTask.task.dependencies = [...new Set([
+          ...mergedTask.task.dependencies,
+          ...task.task.dependencies
+        ])]
       } else {
-        console.log(`!!! merge chunk (first)`, key, task.task.tags.label);
-
         // Create the start of a merged task.
         task.task.tags.label = newLabel;
         keyToMergedTask.set(key, task);
         mergedTasks.push(task);
       }
     } else {
-      console.log(`!!! merge chunk (unmerged)`, task.task.tags.label);
       // No merging is needed.
       mergedTasks.push(task)
     }
@@ -240,35 +270,33 @@ function doMergeTaskTypes(tasks, mergeTaskType) {
   const keyToMergedTask = new Map();
   /** @type {Map<string, string>} */
   const taskIdToMergedId = new Map();
-  const dependentsMap = getDependentsMap(tasks)
 
   for (const task of tasks) {
-    debugger
     const { label } = task.task.tags
 
     let isMerged = false;
     if (label?.startsWith(mergeTaskType + "-")) {
-      const dependents = dependentsMap.get(task.status.taskId) ?? [];
       // Create a key that knows about dependents.
-      const key = mergeTaskType + "-" + dependents.join(",")
+      const key = "(taskType)-" + mergeTaskType;
       const mergedTask = keyToMergedTask.get(key);
 
       if (mergedTask) {
-        console.log(`!!! (merge types) add`, key, task.task.tags.label);
         // The task exists already, add the runs to it.
         taskIdToMergedId.set(task.status.taskId, mergedTask.status.taskId)
 
         // Only apply the merged label when things are merged.
         mergedTask.task.tags.label = mergeTaskType + " (merged)";
 
-
         // Merge the runs.
         mergedTask.status.runs = [
           ...(mergedTask.status.runs ?? []),
           ...(task.status.runs ?? []),
         ];
+        mergedTask.task.dependencies = [...new Set([
+          ...mergedTask.task.dependencies,
+          ...task.task.dependencies
+        ])]
       } else {
-        console.log(`!!! (merge types) first`, key, task.task.tags.label);
         keyToMergedTask.set(key, task);
         mergedTasks.push(task);
       }
@@ -277,7 +305,6 @@ function doMergeTaskTypes(tasks, mergeTaskType) {
     }
 
     if (!isMerged) {
-      console.log(`!!! (merge types) unmerged`, task.task.tags.label);
       // No merging is needed.
       mergedTasks.push(task)
     }
@@ -315,7 +342,7 @@ async function getTasks() {
 
   /** @type {Array<Promise<TaskGroup>>} */
   const taskGroupPromises = taskGroupIds.map(id =>
-    fetch(`https://firefox-ci-tc.services.mozilla.com/api/queue/v1/task-group/${id}/list`)
+    fetch(`${getServer()}/api/queue/v1/task-group/${id}/list`)
       .then((response) => response.json())
   );
 
@@ -404,10 +431,11 @@ function render(tasks) {
     if (match) {
       const src = match[1];
       const trg = match[2];
-      const div = document.createElement("div")
+      const div = document.createElement("div");
+      div.id = "trainingRun"
       div.innerHTML = `Training run: <b>${src}-${trg}</b>`
 
-      elements.controls.insertBefore(div, elements.controls.children[1]);
+      elements.controls.append(div);
       break;
     }
   }
@@ -420,29 +448,22 @@ function render(tasks) {
   const color = d3.scaleOrdinal(d3.schemeCategory10);
 
   /**
-   * Returns the first part of a task name, e.g. "clean-mono" returns "clean"
    * @param {Task} task
+   * @param {number} count
    */
-  function getTaskType(task) {
-    return task.task.tags.label?.split("-")[0] ?? ""
-  }
-
-  /**
-   * @param {Task} task
-   */
-  function getOuterTaskType(task) {
+  function getTaskType(task, count) {
     const { label } = task.task.tags
     if (!label) {
       return "";
     }
     const parts = label.split("-");
-    if (parts.length < 2) {
+    if (parts.length < count) {
       return "";
     }
-    return parts.slice(0, 2).join("-")
+    return parts.slice(0, count).join("-")
   }
 
-  const types = [...new Set(tasks.map(task => getTaskType(task)))]
+  const types = [...new Set(tasks.map(task => getTaskType(task, 1)))]
 
   /**
    * This node function exists so that Typescript can infer the type.
@@ -479,7 +500,7 @@ function render(tasks) {
     // const duration = end - start;
 
     const label = task.task.tags.label ?? task.task.metadata.name
-    const taskType = getTaskType(task);
+    const taskType = getTaskType(task, 1);
 
     return {
       id: task.status.taskId,
@@ -490,9 +511,11 @@ function render(tasks) {
       start,
       end,
       taskType,
-      outerTaskType: getOuterTaskType(task),
+      taskType2: getTaskType(task, 2),
+      taskType3: getTaskType(task, 3),
       dependencies: task.task.dependencies,
       group: types.findIndex(type => type === taskType),
+      task,
     };
   }
 
@@ -660,7 +683,7 @@ function render(tasks) {
     })
     .on("dblclick", (event, d) => {
       window.open(
-        `https://firefox-ci-tc.services.mozilla.com/tasks/${d.id}`,
+        `${getServer()}/tasks/${d.id}`,
         '_blank'
       )
     })
@@ -672,26 +695,44 @@ function render(tasks) {
 
       const actions = [
         {
-          label: "Open in TaskCluster",
+          label: `Open task <b>"${node.id}"</b>`,
           action() {
             window.open(
-              `https://firefox-ci-tc.services.mozilla.com/tasks/${node.id}`,
+              `${getServer()}/tasks/${node.id}`,
+              '_blank'
+            )
+          }
+        },
+        {
+          label: `Open task group <b>"${node.task.status.taskGroupId}"</b>`,
+          action() {
+            window.open(
+              `${getServer()}/tasks/groups/${node.task.status.taskGroupId}`,
               '_blank'
             )
           }
         },
         getMergeAction(node.taskType),
       ];
-      if (node.outerTaskType) {
-        actions.push(getMergeAction(node.outerTaskType));
+      if (node.taskType2) {
+        actions.push(getMergeAction(node.taskType2));
       }
+      if (node.taskType3) {
+        actions.push(getMergeAction(node.taskType3));
+      }
+      actions.push({
+        label: "Log task data",
+        action() {
+          console.log(node.task)
+        }
+      })
 
       /**
        * @param {string} taskType
        */
       function getMergeAction(taskType) {
         return {
-          label: `Merge "${taskType}" nodes`,
+          label: `Merge <b>"${taskType}"</b>`,
           action() {
             const urlParams = new URLSearchParams(window.location.search);
             const mergesRaw = urlParams.get('mergeTaskType');
@@ -719,12 +760,12 @@ function render(tasks) {
           .on("click", (event, item) => {
             event.preventDefault();
             item.action()
-            contextMenu.remove();
+            document.querySelector(".context-menu")?.remove()
           })
 
       // Add an event listener to close the context menu when clicking outside of it
       d3.select("body").on("click.context-menu", function() {
-        contextMenu.remove();
+        document.querySelector(".context-menu")?.remove()
         d3.select("body").on("click.context-menu", null); // Remove the click event listener
       });
     });

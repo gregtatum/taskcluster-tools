@@ -24,6 +24,10 @@ body {
   position: absolute;
   left: 10px;
   top: 0px;
+  height: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: start;
 }
 
 svg {
@@ -33,7 +37,13 @@ svg {
 }
 
 #controls > * {
-  margin: 10px 0;
+  margin: 5px 0;
+}
+
+#server,
+#taskGroup {
+  padding: 3px 6px;
+  width: 330px;
 }
 
 .closeButton {
@@ -79,4 +89,8 @@ a.context-menu-item {
 
 .context-menu-item:hover {
   background-color: #f0f0f0;
+}
+
+#trainingRun {
+  margin-left: 25px;
 }
