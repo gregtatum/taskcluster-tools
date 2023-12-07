@@ -600,7 +600,7 @@ function render(tasks) {
           }
           const totalDuration = maxDuration - minDuration
           const averageDuration = (sourceNode.duration + targetNode.duration) / totalDuration;
-          return 10 + 300 * averageDuration; // Adjust the base distance and factor as needed.
+          return 10 + 800 * Math.sqrt(averageDuration / Math.PI); // Adjust the base distance and factor as needed.
         }),
     )
     .force("charge", d3.forceManyBody())
@@ -652,7 +652,7 @@ function render(tasks) {
    */
   function getNodeRadius(d) {
     const range = maxDuration - minDuration;
-    return 7 + (d.duration / range) * 30;
+    return Math.max(6, Math.sqrt((d.duration / range) / Math.PI) * 150);
   }
 
   // Add a line for each link, and a circle for each node.
