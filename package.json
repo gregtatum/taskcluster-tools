@@ -7,7 +7,8 @@
   "scripts": {
     "start": "web-ext run --firefox-profile fx-profile2 --profile-create-if-missing",
     "start-greg": "web-ext run -f /Applications/FxNightly-en.app/Contents/MacOS/firefox --firefox-profile fx-profile2 --profile-create-if-missing",
-    "build": "web-ext build --overwrite-dest"
+    "build": "web-ext build --overwrite-dest",
+    "release": "web-ext sign --api-key $AMO_JWT_ISSUER --api-secret $AMO_JWT_SECRET"
   },
   "dependencies": {
     "@types/d3": "^7.4.3",

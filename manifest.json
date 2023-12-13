@@ -1,12 +1,12 @@
 {
   "manifest_version": 2,
-  "name": "Taskcluster in Firefox Profiler",
+  "name": "Taskcluster Tools",
   "version": "1.0",
 
   "description": "Loads taskcluster information in the Firefox Profiler",
 
   "background": {
-    "scripts": ["src/extension/background.js"]
+    "scripts": ["extension/background.js"]
   },
   "permissions": [
     "activeTab",
@@ -15,14 +15,14 @@
   ],
   "browser_action": {
     "default_icon": "assets/taskcluster.png",
-    "default_popup": "src/extension/popup.html",
+    "default_popup": "extension/popup.html",
     "browser_style": true,
     "default_title": "Taskcluster in Firefox Profiler"
   },
   "content_scripts": [
     {
       "matches": ["https://firefox-ci-tc.services.mozilla.com/tasks/groups/*"],
-      "js": ["src/extension/taskgroup_content.js"]
+      "js": ["extension/taskgroup_content.js"]
     }
   ],
   "host_permissions": [

@@ -6,7 +6,7 @@ function log(...args) {
   console.log("%c[fxp-taskcluster]%c", "color: #0ff", "color: inherit", ...args)
 }
 
-log("src/extension/profiler_content.js")
+log("extension/profiler_content.js")
 
 browser.runtime.onMessage.addListener((message) => {
   switch (message.name) {
