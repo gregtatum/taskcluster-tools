@@ -1,0 +1,96 @@
+body {
+  font-family: sans-serif;
+}
+
+#info > * {
+  max-width: 400px;
+}
+
+#info {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  position: absolute;
+  left: 0;
+  top: 0;
+  align-items: center;
+  justify-content: center;
+  line-height: 1.7;
+}
+
+#controls {
+  /* Create a stacking context */
+  position: absolute;
+  left: 10px;
+  top: 0px;
+  height: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: start;
+}
+
+svg {
+  position: absolute;
+  top: 0;
+  left: 0;
+}
+
+#controls > * {
+  margin: 5px 0;
+}
+
+#server,
+#taskGroup {
+  padding: 3px 6px;
+  width: 330px;
+}
+
+.closeButton {
+  background-color: #646464;
+  color: white;
+  border: none;
+  padding: 1px 5px;
+  font-size: 11px;
+  cursor: pointer;
+  border-radius: 13px;
+  margin: -2px 7px -2px 3px;
+  position: relative;
+  top: -1px;
+}
+
+.closeButton:hover {
+  background-color: #333;
+}
+
+.context-menu {
+  position: absolute;
+  font-size: 14px;
+  background-color: #fff;
+  border: 1px solid #ccc;
+  box-shadow: 0 2px 9px rgba(0, 0, 0, 0.3);
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  padding: 2px;
+  border-radius: 3px;
+}
+
+
+a.context-menu-item {
+  text-decoration: none;
+  color: #000;
+  cursor: pointer;
+  padding: 5px;
+  transition: background-color 0.3s;
+  display: inline-block;
+  border-radius: 3px;
+}
+
+.context-menu-item:hover {
+  background-color: #f0f0f0;
+}
+
+#trainingRun {
+  margin-left: 25px;
+}

@@ -3,16 +3,18 @@
   "version": "1.0.0",
   "main": "index.js",
   "author": "Greg Tatum",
-  "type": "module",
   "scripts": {
-    "start": "web-ext run --firefox-profile fx-profile2 --profile-create-if-missing",
-    "start-greg": "web-ext run -f /Applications/FxNightly-en.app/Contents/MacOS/firefox --firefox-profile fx-profile2 --profile-create-if-missing",
-    "build": "web-ext build --overwrite-dest",
-    "release": "web-ext sign --api-key $AMO_JWT_ISSUER --api-secret $AMO_JWT_SECRET"
+    "start": "http-server -o .",
+    "lint": "eslint \"./src/**/*.{js,mjs}\" --fix"
   },
   "dependencies": {
-    "@types/d3": "^7.4.3",
-    "@types/webextension-polyfill": "^0.10.4",
-    "web-ext": "^7.9.0"
+    "@types/d3": "^7.4.3"
+  },
+  "devDependencies": {
+    "eslint": "^8.55.0",
+    "eslint-config-prettier": "^9.1.0",
+    "eslint-plugin-prettier": "^5.0.1",
+    "http-server": "^14.1.1",
+    "prettier": "^3.1.1"
   }
 }

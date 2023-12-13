@@ -16,7 +16,7 @@
     "esModuleInterop": true
   },
   // Add a @ts-check comment to a JS file to start type checking it.
-  "include": ["./docs/**/*.js", "./extension/**/*.js"],
-  "files": ["@types/globals.d.ts"],
+  "include": ["./src/**/*.mjs", "./src/**/*.js"],
+  "files": ["src/@types/globals.d.ts"],
   "exclude": []
 }
