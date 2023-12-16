@@ -21,7 +21,7 @@ class UniqueStringArray {
   /**
    * @param {string[]} originalArray
    */
-  constructor(originalArray  = []) {
+  constructor(originalArray = []) {
     this._array = originalArray.slice(0);
     this._stringToIndex = new Map();
     for (let i = 0; i < originalArray.length; i++) {
@@ -101,8 +101,8 @@ class UniqueStringArray {
  */
 function getEmptyThread() {
   return {
-    processType: "default",
-    processName: "Taskcluster",
+    processType: 'default',
+    processName: 'Taskcluster',
     processStartupTime: 0,
     /** @type {number | null} */
     processShutdownTime: null,
@@ -112,12 +112,12 @@ function getEmptyThread() {
      */
     unregisterTime: null,
     pausedRanges: [],
-    name: "",
+    name: '',
     isMainThread: false,
     pid: 0,
     tid: 0,
     samples: {
-      weightType: "samples",
+      weightType: 'samples',
       weight: null,
       /** @type {number[]} */
       stack: [],
@@ -207,17 +207,17 @@ function getEmptyThread() {
     },
 
     /** @type {string[]} */
-    stringArray: []
-  }
+    stringArray: [],
+  };
 }
 
 function getEmptyProfile() {
   return {
     meta: {
-      interval: 1000,
+      interval: 1,
       startTime: 0,
       processType: 0,
-      product: "Taskcluster",
+      product: 'Taskcluster',
       stackwalk: 0,
       version: 27,
       preprocessedProfileVersion: 47,
@@ -238,50 +238,50 @@ function getEmptyProfile() {
 
 function getMarkerSchema() {
   return {
-    name: "Task",
-    tooltipLabel:"{marker.data.name}",
-    tableLabel:"{marker.data.name}",
-    chartLabel:"{marker.data.name}",
-    display: ["marker-chart", "marker-table"],
+    name: 'Task',
+    tooltipLabel: '{marker.data.name}',
+    tableLabel: '{marker.data.name}',
+    chartLabel: '{marker.data.name}',
+    display: ['marker-chart', 'marker-table'],
     data: [
       {
-        key: "startTime",
-        label: "Start time",
-        format: "string"
+        key: 'startTime',
+        label: 'Start time',
+        format: 'string',
       },
       {
-        key: "name",
-        label: "Task Name",
-        format: "string",
+        key: 'name',
+        label: 'Task Name',
+        format: 'string',
         searchable: true,
       },
       {
-        key: "owner",
-        label: "Owner",
-        format: "string"
+        key: 'owner',
+        label: 'Owner',
+        format: 'string',
       },
       {
-        key: "description",
-        label: "Description",
-        format: "url"
+        key: 'description',
+        label: 'Description',
+        format: 'url',
       },
       {
-        key: "url",
-        label: "Task URL",
-        format: "url",
+        key: 'url',
+        label: 'Task URL',
+        format: 'url',
       },
       {
-        key: "source",
-        label: "Source URL",
-        format: "url"
+        key: 'source',
+        label: 'Source URL',
+        format: 'url',
       },
       {
-        key: "taskGroup",
-        label: "Task Group URL",
-        format: "url",
+        key: 'taskGroup',
+        label: 'Task Group URL',
+        format: 'url',
       },
-    ]
-  }
+    ],
+  };
 }
 
 /**
@@ -290,123 +290,157 @@ function getMarkerSchema() {
  * @returns {any}
  */
 export function getProfile(taskGroups, url) {
-  const profile = getEmptyProfile()
-
-  const ids = taskGroups.map(taskGroup => taskGroup.taskGroupId).join(", ")
+  const profile = getEmptyProfile();
 
   let profileStartTime = Infinity;
 
-  const timings = taskGroups.map(taskGroup => {
-    let start = Infinity;
-    let end = -Infinity;
-    for (const { status, task } of taskGroup.tasks) {
+  // Compute the start and end of each task group.
+  const taskGroupTimeRanges = taskGroups.map((taskGroup) => {
+    /** @type {null | number} */
+    let start = null;
+    /** @type {null | number} */
+    let end = null;
+
+    for (const { status } of taskGroup.tasks) {
       const { runs } = status;
       if (runs) {
         for (const run of runs) {
           const started = new Date(run.started).valueOf();
           const resolved = new Date(run.resolved).valueOf();
-          start = Math.min(start, started);
-          end = Math.max(end, resolved);
+          if (start === null) {
+            start = started;
+          } else {
+            start = Math.min(start, started);
+          }
+          if (end === null) {
+            end = resolved;
+          } else {
+            end = Math.max(end, resolved);
+          }
         }
       }
     }
-    end = Math.max(start, end);
-    profileStartTime = Math.min(start)
-    return { start, end }
+    if (start !== null) {
+      profileStartTime = Math.min(profileStartTime, start);
+    }
+    return { start, end };
   });
 
-  const profileName = `Task Group ${ids} - ${new Date(profileStartTime).toLocaleDateString()}`
+  if (profileStartTime === Infinity) {
+    // No start time was determined, as there were no runs yet with a start time.
+    profileStartTime = 0;
+  }
 
-  profile.meta.interval = 1;
+  {
+    const ids = taskGroups.map((taskGroup) => taskGroup.taskGroupId).join(', ');
+    const date = new Date(profileStartTime).toLocaleDateString();
+    profile.meta.product = `Task Group ${ids} - ${date}`;
+  }
+
   profile.meta.startTime = profileStartTime;
-  profile.meta.product = profileName;
 
-  const stringArray = new UniqueStringArray();
-  let tid = 0
-  let pid = 0
+  // These should be unique per thread.
+  let tid = 0;
+  let pid = 0;
 
-  for (let i = 0; i < taskGroups.length; i++) {
-    const taskGroup = taskGroups[i];
-    const { start, end } = timings[i];
-    for (const { status } of taskGroup.tasks) {
-      for (const run of status.runs ?? []) {
-        console.log(`!!! run`, run);
-      }
-    }
+  // Create a "thread" for every task group.
+  profile.threads = taskGroups.map((taskGroup, i) => {
+    const stringArray = new UniqueStringArray();
+    const taskGroupTimeRange = taskGroupTimeRanges[i];
 
-    const sortedTasks = taskGroup.tasks.map(task => {
+    // Sort of the tasks by their start time.
+    const sortedTasks = taskGroup.tasks.map((task) => {
       const { runs } = task.status;
       if (!runs || !runs.length || !runs[0].started) {
-        return { task, start: null, end: null }
+        return { task, start: null };
       }
       return {
         task,
         start: new Date(runs[0].started).valueOf(),
-        end: new Date(runs[0].resolved).valueOf(),
-      }
+      };
     });
 
     sortedTasks.sort((ta, tb) => {
       if (!ta.start) {
-        return -1
+        return -1;
       }
       if (!tb.start) {
-        return 1
+        return 1;
       }
-      return ta.start - tb.start
+      return ta.start - tb.start;
     });
 
-    const thread = getEmptyThread()
-    profile.threads.push(thread)
-    thread.isMainThread = true
-    thread.name = taskGroup.taskGroupId
+    const thread = getEmptyThread();
+    profile.threads.push(thread);
+    thread.isMainThread = true;
+    thread.name = taskGroup.taskGroupId;
     thread.tid = tid++;
     thread.pid = pid++;
     const markers = thread.markers;
-    thread.registerTime = start - profileStartTime
-    thread.unregisterTime = end - profileStartTime
-    console.log(`!!! sortedTasks`, sortedTasks);
-    for (const {task} of sortedTasks) {
-      if (!task.status.runs) {
-        continue;
-      }
-      for (const run of task.status.runs) {
-        console.log(`!!! run`, run, start, end);
-        if (start === null) {
+
+    if (taskGroupTimeRange.start !== null) {
+      thread.registerTime = taskGroupTimeRange.start - profileStartTime;
+    } else {
+      // Fake an empty thread by register and unregistering it outside the time range.
+      thread.registerTime = -1;
+      thread.unregisterTime = -1;
+    }
+    if (taskGroupTimeRange.end !== null) {
+      thread.unregisterTime = taskGroupTimeRange.end - profileStartTime;
+    }
+
+    // Add the tasks as markers.
+    if (taskGroupTimeRange.start !== null) {
+      for (const { task } of sortedTasks) {
+        if (!task.status.runs) {
           continue;
         }
+        for (const run of task.status.runs) {
+          const runStart = run.started ? new Date(run.started).valueOf() : null;
+          const runEnd = run.resolved ? new Date(run.resolved).valueOf() : null;
+          const durationMarker = 1;
+          const instantMarker = 2;
+          if (runStart === null) {
+            // There is nothing to graph here.
+            continue;
+          } else {
+            markers.startTime.push(runStart - profileStartTime);
+          }
+          if (runEnd === null) {
+            markers.endTime.push(null);
+            markers.phase.push(instantMarker);
+          } else {
+            markers.endTime.push(runEnd - profileStartTime);
+            markers.phase.push(durationMarker);
+          }
 
-        markers.category.push(0);
-        const durationMarker = 1
-        const instantMarker = 2
-        markers.startTime.push(start - profileStartTime);
-        if (end === null) {
-          markers.endTime.push(profileStartTime);
-          markers.phase.push(instantMarker);
-        } else {
-          markers.endTime.push(end - profileStartTime);
-          markers.phase.push(durationMarker);
+          markers.category.push(0);
+          markers.name.push(stringArray.indexForString(`Task (${run.state})`));
+          // markers.name.push(stringArray.indexForString(`Task`));
+
+          markers.data.push({
+            type: 'Task',
+            startTime: new Date(
+              profile.meta.startTime + profileStartTime,
+            ).toLocaleTimeString(),
+            name: task.task.metadata.name,
+            url: `https://${url.host}/tasks/${task.task.taskGroupId}`,
+            owner: task.task.metadata.owner,
+            description: task.task.metadata.description,
+            source: task.task.metadata.source,
+            taskGroup: url.href,
+          });
+
+          markers.length++;
         }
-        markers.name.push(stringArray.indexForString(`Task (${run.state})`));
-        markers.name.push(stringArray.indexForString(`Task`));
-
-        markers.data.push({
-          type: "Task",
-          startTime: new Date(profile.meta.startTime + profileStartTime).toLocaleTimeString(),
-          name: task.task.metadata.name,
-          url: `https://${url.host}/tasks/${task.task.taskGroupId}`,
-          owner: task.task.metadata.owner,
-          description: task.task.metadata.description,
-          source: task.task.metadata.source,
-          taskGroup: url.href
-        });
-        markers.length++;
       }
     }
+
     thread.stringArray = stringArray.serializeToArray();
-  }
 
+    return thread;
+  });
 
-  console.log("Generated profile:", profile)
+  console.log('Generated profile:', profile);
   return profile;
 }
