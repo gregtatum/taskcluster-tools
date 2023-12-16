@@ -175,6 +175,10 @@ function setupHandlers() {
   }
 }
 
+console.log('Override the profiler origin with window.profilerOrigin');
+asAny(window).profilerOrigin = 'https://profiler.firefox.com';
+// window.profilerOrigin = 'http://localhost:4242/';
+
 /**
  * @param {TaskGroup[]} taskGroups
  * @param {URL} taskClusterURL
@@ -186,9 +190,8 @@ function setupProfilerButton(taskGroups, taskClusterURL) {
     // By default select all the threads.
     const params = `?thread=0w${profile.threads.length}`;
 
-    // const origin = "https://profiler.firefox.com"
-    const origin = 'http://localhost:4242/';
-    const profilerURL = origin + '/from-post-message/' + params;
+    const profilerURL =
+      asAny(window).profilerOrigin + '/from-post-message/' + params;
 
     const profilerWindow = window.open(profilerURL, '_blank');
 
@@ -493,7 +496,6 @@ function render(tasks) {
     elements.infoMessage.innerText = 'There were no tasks in the task group';
     return;
   }
-  console.log('tasks', tasks);
   elements.info.style.display = 'none';
 
   for (const task of tasks) {
@@ -617,28 +619,41 @@ function render(tasks) {
       return node;
     });
 
-  console.log('Nodes', nodes);
-
   /** @type {number[]} */
   const durations = nodes.map((node) => node.duration);
   const starts = nodes.map((node) => node.start);
   // const ends = nodes.map((node) => node.end);
 
+  let totalDuration = 0;
+  for (const duration of durations) {
+    totalDuration += duration;
+  }
+
   const minDuration = Math.min(...durations);
   const maxDuration = Math.max(...durations);
   const minStart = Math.min(...starts);
   const maxStart = Math.max(...starts);
-  // const endRange = Math.max(...ends);
-  // const totalDuration = endRange - minStart;
 
-  const links = nodes.flatMap((node) =>
-    node.dependencies
-      .filter((dependency) => nodes.some((node) => node.id === dependency))
-      .map((dependency) => ({
-        source: dependency,
-        target: node.id,
-      })),
-  );
+  const linksSet = new Set();
+  for (const node of nodes) {
+    for (const dependency of node.dependencies) {
+      if (node.id !== dependency && nodes.some((n) => n.id === dependency)) {
+        linksSet.add(dependency + ',' + node.id);
+      }
+    }
+  }
+  const links = [...linksSet.values()].map((v) => {
+    const [source, target] = v.split(',');
+    return { source, target };
+  });
+
+  console.log('nodes', nodes);
+  console.log('links', links);
+  console.log('tasks', tasks);
+
+  asAny(window).nodes = nodes;
+  asAny(window).links = links;
+  asAny(window).tasks = tasks;
 
   /**
    * @typedef {d3.SimulationNodeDatum} SimulationNodeDatum
@@ -673,6 +688,10 @@ function render(tasks) {
     return asAny(node);
   }
 
+  const screenSize = Math.sqrt(
+    window.innerWidth ** 2 + window.innerHeight ** 2,
+  );
+
   // Create a simulation with several forces.
   const simulation = d3
     .forceSimulation(nodes)
@@ -694,7 +713,16 @@ function render(tasks) {
           const totalDuration = maxDuration - minDuration;
           const averageDuration =
             (sourceNode.duration + targetNode.duration) / totalDuration;
-          return 10 + 800 * Math.sqrt(averageDuration / Math.PI); // Adjust the base distance and factor as needed.
+
+          return 10 + 800 * Math.sqrt(averageDuration / Math.PI);
+
+          // return (
+          //   10 +
+          //   20000 *
+          //     Math.sqrt(
+          //       (screenSize * averageDuration) / Math.PI / totalDuration,
+          //     )
+          // ); // Adjust the base distance and factor as needed.
         }),
     )
     .force('charge', d3.forceManyBody())
@@ -756,6 +784,10 @@ function render(tasks) {
    */
   function getNodeRadius(d) {
     const range = maxDuration - minDuration;
+    // return Math.max(
+    //   6,
+    //   Math.sqrt((screenSize * d.duration) / Math.PI / totalDuration) * 7,
+    // );
     return Math.max(6, Math.sqrt(d.duration / range / Math.PI) * 150);
   }
 
