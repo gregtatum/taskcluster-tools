@@ -27,9 +27,12 @@ function setTaskToGroup(taskToGroup, taskId, taskGroupId) {
 }
 
 /**
+ * TODO - Refactor into an object rather than argument list
+ *
  * @param {string[]} taskGroupIds
  * @param {string} server
  * @param {boolean} isMergeChunks
+ * @param {boolean} fetchDependentTasks
  * @param {string[] | null} mergeTaskTypes
  * @param {(message: string) => void} updateStatusMessage
  * @param {Set<string>} ignoredTaskGroupIds
@@ -39,6 +42,7 @@ export async function getTasks(
   taskGroupIds,
   server,
   isMergeChunks,
+  fetchDependentTasks,
   mergeTaskTypes,
   updateStatusMessage,
   ignoredTaskGroupIds,
@@ -95,12 +99,18 @@ export async function getTasks(
   const taskToGroup = getTaskToGroup();
 
   // Filter out any ignored task groups. We'll still pull in the dependencies.
-  taskGroups = taskGroups.filter((taskGroup) =>
-    ignoredTaskGroupIds.has(taskGroup.taskGroupId),
+  taskGroups = taskGroups.filter(
+    (taskGroup) => !ignoredTaskGroupIds.has(taskGroup.taskGroupId),
   );
 
+  let count = 0;
+  // TODO - Put this in the UI.
+  const maxCount = 10;
   // Load in the dependency groups.
   for (const taskId of dependencies) {
+    if (!fetchDependentTasks) {
+      break;
+    }
     if (knownTaskIds.has(taskId)) {
       continue;
     }
@@ -153,6 +163,11 @@ export async function getTasks(
           // of the newly discovered dependencies.
           dependencies.add(id);
         }
+      }
+
+      count++;
+      if (count > maxCount) {
+        break;
       }
     } catch (error) {
       console.error(error);

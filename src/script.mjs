@@ -19,6 +19,9 @@ asAny(window).profilerOrigin = 'http://localhost:4242/';
 const elements = {
   taskGroup: /** @type {HTMLInputElement} */ (getElement('taskGroup')),
   mergeChunks: /** @type {HTMLInputElement} */ (getElement('mergeChunks')),
+  fetchDependentTasks: /** @type {HTMLInputElement} */ (
+    getElement('fetchDependentTasks')
+  ),
   server: /** @type {HTMLInputElement} */ (getElement('server')),
   graph: getElement('graph'),
   info: getElement('info'),
@@ -43,6 +46,7 @@ async function init() {
     getTaskGroupIds(),
     server,
     getIsMergeChunks(),
+    getFetchDependentTasks(),
     getMergeTaskTypes(),
     updateStatusMessage,
     new Set(getIgnoredTaskGroupIds()),
@@ -116,6 +120,16 @@ function setupHandlers() {
   elements.mergeChunks.addEventListener('click', () => {
     const urlParams = new URLSearchParams(window.location.search);
     urlParams.set('mergeChunks', elements.mergeChunks.checked.toString());
+    changeLocation(urlParams);
+  });
+
+  elements.fetchDependentTasks.checked = getFetchDependentTasks();
+  elements.fetchDependentTasks.addEventListener('click', () => {
+    const urlParams = new URLSearchParams(window.location.search);
+    urlParams.set(
+      'fetchDependentTasks',
+      elements.fetchDependentTasks.checked.toString(),
+    );
     changeLocation(urlParams);
   });
 
@@ -257,6 +271,16 @@ function setupProfilerButton(taskGroups, taskClusterURL) {
 function getIsMergeChunks() {
   const urlParams = new URLSearchParams(window.location.search);
   return urlParams.get('mergeChunks') === 'true';
+}
+
+/**
+ * Should the dependent chunks be fetched?
+ *
+ * @returns {boolean}
+ */
+function getFetchDependentTasks() {
+  const urlParams = new URLSearchParams(window.location.search);
+  return urlParams.get('fetchDependentTasks') === 'true';
 }
 
 function getMergeTaskTypes() {
