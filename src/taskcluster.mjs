@@ -105,7 +105,7 @@ export async function getTasks(
 
   let count = 0;
   // TODO - Put this in the UI.
-  const maxCount = 10;
+  const maxCount = 15;
   // Load in the dependency groups.
   for (const taskId of dependencies) {
     if (!fetchDependentTasks) {
