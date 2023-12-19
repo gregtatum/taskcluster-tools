@@ -114,6 +114,7 @@ function getEmptyThread() {
     pausedRanges: [],
     name: '',
     isMainThread: false,
+    showMarkersInTimeline: true,
     pid: 0,
     tid: 0,
     samples: {
@@ -211,6 +212,51 @@ function getEmptyThread() {
   };
 }
 
+function getCategories() {
+  return [
+    {
+      name: 'Other',
+      color: 'grey',
+      subcategories: ['Other'],
+    },
+    {
+      name: 'Idle',
+      color: 'transparent',
+      subcategories: ['Other'],
+    },
+    {
+      name: 'Layout',
+      color: 'purple',
+      subcategories: ['Other'],
+    },
+    {
+      name: 'JavaScript',
+      color: 'yellow',
+      subcategories: ['Other'],
+    },
+    {
+      name: 'GC / CC',
+      color: 'orange',
+      subcategories: ['Other'],
+    },
+    {
+      name: 'Network',
+      color: 'lightblue',
+      subcategories: ['Other'],
+    },
+    {
+      name: 'Graphics',
+      color: 'green',
+      subcategories: ['Other'],
+    },
+    {
+      name: 'DOM',
+      color: 'blue',
+      subcategories: ['Other'],
+    },
+  ];
+}
+
 function getEmptyProfile() {
   return {
     meta: {
@@ -225,7 +271,8 @@ function getEmptyProfile() {
       logicalCPUs: 0,
       symbolicationNotSupported: true,
       usesOnlyOneStackType: true,
-      markerSchema: [getMarkerSchema()],
+      markerSchema: [getTaskSchema()],
+      categories: getCategories(),
     },
     libs: [],
     /**
@@ -236,13 +283,18 @@ function getEmptyProfile() {
   };
 }
 
-function getMarkerSchema() {
+/**
+ * This is documented:
+ *  Markers: https://github.com/firefox-devtools/profiler/src/types/markers.js
+ *  Schema: https://github.com/firefox-devtools/profiler/blob/df32b2d320cb4c9bc7b4ee988a291afa33daff71/src/types/markers.js#L100
+ */
+function getTaskSchema() {
   return {
     name: 'Task',
     tooltipLabel: '{marker.data.name}',
     tableLabel: '{marker.data.name}',
     chartLabel: '{marker.data.name}',
-    display: ['marker-chart', 'marker-table'],
+    display: ['marker-chart', 'marker-table', 'timeline-overview'],
     data: [
       {
         key: 'startTime',
@@ -261,12 +313,34 @@ function getMarkerSchema() {
         format: 'string',
       },
       {
-        key: 'description',
-        label: 'Description',
-        format: 'url',
+        key: 'retries',
+        label: 'Retries',
+        format: 'string',
       },
       {
-        key: 'url',
+        key: 'state',
+        label: 'State',
+        format: 'string',
+      },
+      {
+        key: 'reasonCreated',
+        label: 'Reason Created',
+        format: 'string',
+      },
+      {
+        key: 'reasonResolved',
+        label: 'Reason Resolved',
+        format: 'string',
+      },
+      {
+        key: 'description',
+        label: 'Description',
+        format: 'string',
+      },
+
+      // URLs:
+      {
+        key: 'taskURL',
         label: 'Task URL',
         format: 'url',
       },
@@ -280,6 +354,11 @@ function getMarkerSchema() {
         label: 'Task Group URL',
         format: 'url',
       },
+      {
+        key: 'liveLog',
+        label: 'Live Log',
+        format: 'url',
+      },
     ],
   };
 }
@@ -287,7 +366,7 @@ function getMarkerSchema() {
 /**
  * @param {TaskGroup[]} taskGroups
  * @param {URL} url
- * @returns {any}
+ * @returns {Profile}
  */
 export function getProfile(taskGroups, url) {
   const profile = getEmptyProfile();
@@ -305,17 +384,25 @@ export function getProfile(taskGroups, url) {
       const { runs } = status;
       if (runs) {
         for (const run of runs) {
-          const started = new Date(run.started).valueOf();
-          const resolved = new Date(run.resolved).valueOf();
-          if (start === null) {
-            start = started;
-          } else {
-            start = Math.min(start, started);
+          // Attempt to parse a Date. The results will be NaN on failure.
+          const startedMS = new Date(
+            run.started ?? run.resolved ?? '',
+          ).valueOf();
+          const resolvedMS = new Date(run.resolved ?? '').valueOf();
+
+          if (!Number.isNaN(startedMS)) {
+            if (start === null) {
+              start = startedMS;
+            } else {
+              start = Math.min(start, startedMS);
+            }
           }
-          if (end === null) {
-            end = resolved;
-          } else {
-            end = Math.max(end, resolved);
+          if (!Number.isNaN(resolvedMS)) {
+            if (end === null) {
+              end = resolvedMS;
+            } else {
+              end = Math.max(end, resolvedMS);
+            }
           }
         }
       }
@@ -397,7 +484,10 @@ export function getProfile(taskGroups, url) {
         }
         for (const run of task.status.runs) {
           const runStart = run.started ? new Date(run.started).valueOf() : null;
-          const runEnd = run.resolved ? new Date(run.resolved).valueOf() : null;
+          let runEnd = run.resolved ? new Date(run.resolved).valueOf() : null;
+          if (run.state === 'running' && runEnd === null) {
+            runEnd = Date.now();
+          }
           const durationMarker = 1;
           const instantMarker = 2;
           if (runStart === null) {
@@ -414,21 +504,38 @@ export function getProfile(taskGroups, url) {
             markers.phase.push(durationMarker);
           }
 
-          markers.category.push(0);
-          markers.name.push(stringArray.indexForString(`Task (${run.state})`));
-          // markers.name.push(stringArray.indexForString(`Task`));
+          markers.category.push(5);
+          const grouping = run.reasonResolved ?? run.state;
+          markers.name.push(
+            stringArray.indexForString(
+              run.state === 'completed' ? 'Task' : `Task (${grouping})`,
+            ),
+          );
+
+          const taskName = task.task.metadata.name;
+          const retries = task.task.retries;
+          const runId = run.runId;
+          const name =
+            run.state === 'completed' && run.runId === 0 && retries > 1
+              ? taskName
+              : `${taskName} (run ${runId + 1}/${retries})`;
 
           markers.data.push({
             type: 'Task',
             startTime: new Date(
               profile.meta.startTime + profileStartTime,
             ).toLocaleTimeString(),
-            name: task.task.metadata.name,
-            url: `https://${url.host}/tasks/${task.task.taskGroupId}`,
+            name,
             owner: task.task.metadata.owner,
             description: task.task.metadata.description,
             source: task.task.metadata.source,
-            taskGroup: url.href,
+            retries: `${runId + 1} / ${retries}`,
+            state: run.state,
+            reasonCreated: run.reasonCreated,
+            reasonResolved: run.reasonResolved,
+            taskURL: `https://${url.host}/tasks/${task.status.taskId}/runs/${runId}`,
+            taskGroup: `https://${url.host}/tasks/groups/${task.task.taskGroupId}`,
+            liveLog: `https://${url.host}/tasks/${task.status.taskId}/runs/${runId}/logs/live/public/logs/live.log`,
           });
 
           markers.length++;
@@ -440,6 +547,8 @@ export function getProfile(taskGroups, url) {
 
     return thread;
   });
+
+  profile.threads.sort((a, b) => a.registerTime - b.registerTime);
 
   console.log('Generated profile:', profile);
   return profile;

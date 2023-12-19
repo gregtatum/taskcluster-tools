@@ -1,10 +1,20 @@
 // @ts-check
+import { getTasks, isTaskGroupIdValid } from './taskcluster.mjs';
 import { getProfile } from './profiler.mjs';
+import {
+  asAny,
+  encodeUintArrayForUrlComponent,
+  ensureExists,
+} from './utils.mjs';
 
 // Work around ts(2686)
 //   > 'd3' refers to a UMD global, but the current file is a module.
 //   > Consider adding an import instead.
 const d3 = window.d3;
+
+console.log('Override the profiler origin with window.profilerOrigin');
+// asAny(window).profilerOrigin = 'https://profiler.firefox.com';
+asAny(window).profilerOrigin = 'http://localhost:4242/';
 
 const elements = {
   taskGroup: /** @type {HTMLInputElement} */ (getElement('taskGroup')),
@@ -18,13 +28,35 @@ const elements = {
 };
 
 setupHandlers();
-getTasks()
-  .then((tasks) => {
-    if (tasks) {
-      render(tasks);
-    }
-  })
-  .catch((error) => console.error(error));
+init().catch((error) => {
+  elements.infoMessage.innerText =
+    'Failed to fetch the task. See the console for more details.';
+  console.log(error);
+});
+
+async function init() {
+  updateStatusMessage('Fetching the tasks…');
+
+  const server = getServer();
+
+  const result = await getTasks(
+    getTaskGroupIds(),
+    server,
+    getIsMergeChunks(),
+    getMergeTaskTypes(),
+    updateStatusMessage,
+    new Set(getIgnoredTaskGroupIds()),
+  );
+
+  if (result) {
+    const { mergedTasks, taskGroups } = result;
+    exposeAsGlobal('taskGroups', taskGroups);
+    render(mergedTasks);
+    setupProfilerButton(taskGroups, new URL(server));
+  } else {
+    updateStatusMessage('No tasks were found.');
+  }
+}
 
 /**
  * @param {string} id
@@ -36,34 +68,6 @@ function getElement(id) {
     throw new Error('Could not find element ' + id);
   }
   return element;
-}
-
-/**
- * @param {any} any
- * @returns {any}
- */
-function asAny(any) {
-  return any;
-}
-
-/**
- * Ensure some T exists when the type systems knows it can be null or undefined.
- *
- * @template T
- * @param {T | null | undefined} item
- * @param {string} [message]
- * @returns {T}
- */
-export function ensureExists(item, message = 'an item') {
-  if (item === null) {
-    throw new Error(message || 'Expected ${name} to exist, and it was null.');
-  }
-  if (item === undefined) {
-    throw new Error(
-      message || 'Expected ${name} to exist, and it was undefined.',
-    );
-  }
-  return item;
 }
 
 /**
@@ -175,9 +179,21 @@ function setupHandlers() {
   }
 }
 
-console.log('Override the profiler origin with window.profilerOrigin');
-asAny(window).profilerOrigin = 'https://profiler.firefox.com';
-// window.profilerOrigin = 'http://localhost:4242/';
+/**
+ * @param {string} message
+ */
+function updateStatusMessage(message) {
+  elements.infoMessage.innerText = message;
+}
+
+/**
+ * @param {string} key
+ * @param {any} value
+ */
+function exposeAsGlobal(key, value) {
+  console.log(key, value);
+  asAny(window)[key] = value;
+}
 
 /**
  * @param {TaskGroup[]} taskGroups
@@ -187,11 +203,15 @@ function setupProfilerButton(taskGroups, taskClusterURL) {
   elements.profiler.addEventListener('click', async () => {
     const profile = getProfile(taskGroups, taskClusterURL);
 
-    // By default select all the threads.
-    const params = `?thread=0w${profile.threads.length}`;
+    const threadSelection = encodeUintArrayForUrlComponent(
+      profile.threads.map((_thread, i) => i),
+    );
 
-    const profilerURL =
-      asAny(window).profilerOrigin + '/from-post-message/' + params;
+    // By default select all the threads.
+    const params = `?thread=${threadSelection}`;
+    const { profilerOrigin } = asAny(window);
+
+    const profilerURL = profilerOrigin + '/from-post-message/' + params;
 
     const profilerWindow = window.open(profilerURL, '_blank');
 
@@ -214,15 +234,15 @@ function setupProfilerButton(taskGroups, taskClusterURL) {
           name: 'inject-profile',
           profile,
         };
-        profilerWindow.postMessage(message, origin);
+        profilerWindow.postMessage(message, profilerOrigin);
         window.removeEventListener('message', listener);
       }
     };
 
     window.addEventListener('message', listener);
     while (!isReady) {
-      await new Promise((resolve) => setTimeout(resolve, 10));
-      profilerWindow.postMessage({ name: 'is-ready' }, origin);
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      profilerWindow.postMessage({ name: 'is-ready' }, profilerOrigin);
     }
 
     window.removeEventListener('message', listener);
@@ -263,13 +283,6 @@ function getServer() {
 }
 
 /**
- * @param {string} id
- */
-function isTaskGroupIdValid(id) {
-  return id.match(/^[a-zA-Z0-9_-]+$/);
-}
-
-/**
  * @returns {string[]}
  */
 function getTaskGroupIds() {
@@ -289,203 +302,22 @@ function getTaskGroupIds() {
 }
 
 /**
- * @param {Task[]} tasks
- * @return {Task[]}
+ * @returns {string[]}
  */
-function mergeChunks(tasks) {
-  /** @type {Task[]} */
-  const mergedTasks = [];
-  /** @type {Map<string, Task>} */
-  const keyToMergedTask = new Map();
-  /** @type {Map<string, string>} */
-  const taskIdToMergedId = new Map();
-  for (const task of tasks) {
-    const { label } = task.task.tags;
+function getIgnoredTaskGroupIds() {
+  const urlParams = new URLSearchParams(window.location.search);
+  // Extract the taskGroupId parameter
+  const taskGroupIdParam = urlParams.get('ignoredTaskGroupIds');
 
-    const chunkResult = label?.match(/(.*)-\d+\/\d+$/);
-    if (chunkResult) {
-      // This is a chunk that needs merging.
-      const newLabel = chunkResult[1];
-      const key = '(chunk)-' + newLabel;
-      const mergedTask = keyToMergedTask.get(key);
+  // "PuI6mYZPTUqAfyZMTgeUng", "S5E71GihQM6Te_KdrUmATw"
 
-      if (mergedTask) {
-        // The task exists already, add the runs to it.
-        taskIdToMergedId.set(task.status.taskId, mergedTask.status.taskId);
-
-        // Merge the runs.
-        mergedTask.status.runs = [
-          ...(mergedTask.status.runs ?? []),
-          ...(task.status.runs ?? []),
-        ];
-        mergedTask.task.dependencies = [
-          ...new Set([
-            ...mergedTask.task.dependencies,
-            ...task.task.dependencies,
-          ]),
-        ];
-      } else {
-        // Create the start of a merged task.
-        task.task.tags.label = newLabel;
-        keyToMergedTask.set(key, task);
-        mergedTasks.push(task);
-      }
-    } else {
-      // No merging is needed.
-      mergedTasks.push(task);
-    }
+  if (!taskGroupIdParam) {
+    return [];
   }
 
-  for (const task of mergedTasks) {
-    task.task.dependencies = task.task.dependencies.map(
-      (id) => taskIdToMergedId.get(id) ?? id,
-    );
-  }
-
-  return mergedTasks;
-}
-
-/**
- * @param {Task[]} tasks
- * @param {string} mergeTaskType
- * @return {Task[]}
- */
-function doMergeTaskTypes(tasks, mergeTaskType) {
-  /** @type {Task[]} */
-  const mergedTasks = [];
-  /** @type {Map<string, Task>} */
-  const keyToMergedTask = new Map();
-  /** @type {Map<string, string>} */
-  const taskIdToMergedId = new Map();
-
-  for (const task of tasks) {
-    const { label } = task.task.tags;
-
-    let isMerged = false;
-    if (label?.startsWith(mergeTaskType + '-')) {
-      // Create a key that knows about dependents.
-      const key = '(taskType)-' + mergeTaskType;
-      const mergedTask = keyToMergedTask.get(key);
-
-      if (mergedTask) {
-        // The task exists already, add the runs to it.
-        taskIdToMergedId.set(task.status.taskId, mergedTask.status.taskId);
-
-        // Only apply the merged label when things are merged.
-        mergedTask.task.tags.label = mergeTaskType + ' (merged)';
-
-        // Merge the runs.
-        mergedTask.status.runs = [
-          ...(mergedTask.status.runs ?? []),
-          ...(task.status.runs ?? []),
-        ];
-        mergedTask.task.dependencies = [
-          ...new Set([
-            ...mergedTask.task.dependencies,
-            ...task.task.dependencies,
-          ]),
-        ];
-      } else {
-        keyToMergedTask.set(key, task);
-        mergedTasks.push(task);
-      }
-
-      isMerged = true;
-    }
-
-    if (!isMerged) {
-      // No merging is needed.
-      mergedTasks.push(task);
-    }
-  }
-
-  for (const task of mergedTasks) {
-    task.task.dependencies = task.task.dependencies.map(
-      (id) => taskIdToMergedId.get(id) ?? id,
-    );
-  }
-
-  return mergedTasks;
-}
-
-/**
- * @returns {Promise<Task[] | null>}
- */
-async function getTasks() {
-  const taskGroupIds = getTaskGroupIds();
-  if (!taskGroupIds.length) {
-    return null;
-  }
-
-  // Validate the taskGroupIds
-  if (
-    taskGroupIds.length &&
-    taskGroupIds.some((id) => !isTaskGroupIdValid(id))
-  ) {
-    const p = document.createElement('p');
-    p.innerText =
-      'A task group id was not valid, ' + JSON.stringify(taskGroupIds);
-    document.body.appendChild(p);
-    throw new Error(p.innerText);
-  }
-
-  console.log('Using the following taskGroupIds', taskGroupIds);
-
-  elements.infoMessage.innerText = 'Fetching the tasks…';
-
-  /** @type {Array<Promise<TaskGroup>>} */
-  const taskGroupPromises = taskGroupIds.map((id) =>
-    fetch(`${getServer()}/api/queue/v1/task-group/${id}/list`).then(
-      (response) => response.json(),
-    ),
-  );
-
-  const taskGroups = await Promise.all(taskGroupPromises);
-  setupProfilerButton(taskGroups, new URL(getServer()));
-
-  /** @type {Task[]} */
-  let tasks = [];
-  for (const { tasks: tasksList } of taskGroups) {
-    for (const task of tasksList) {
-      tasks.push(task);
-    }
-  }
-
-  mutateAndRemoveMissingDependencies(tasks);
-
-  if (getIsMergeChunks()) {
-    tasks = mergeChunks(tasks);
-  }
-
-  mutateAndRemoveMissingDependencies(tasks);
-
-  const mergeTaskTypes = getMergeTaskTypes();
-  if (mergeTaskTypes) {
-    for (const mergeTaskType of mergeTaskTypes) {
-      tasks = doMergeTaskTypes(tasks, mergeTaskType);
-    }
-  }
-
-  return tasks;
-}
-
-/**
- * @param {Task[]} tasks
- */
-function mutateAndRemoveMissingDependencies(tasks) {
-  // Figure out which taskIds are actually present.
-  const presentTaskIds = new Set();
-  for (const task of tasks) {
-    const { taskId } = task.status;
-    presentTaskIds.add(taskId);
-  }
-
-  // Remove any dependencies that aren't present.
-  for (const task of tasks) {
-    task.task.dependencies = task.task.dependencies.filter((id) =>
-      presentTaskIds.has(id),
-    );
-  }
+  // Parse the taskGroupId values into an array
+  const taskGroupIds = taskGroupIdParam.split(',');
+  return taskGroupIds;
 }
 
 /**
@@ -493,7 +325,7 @@ function mutateAndRemoveMissingDependencies(tasks) {
  */
 function render(tasks) {
   if (tasks.length === 0) {
-    elements.infoMessage.innerText = 'There were no tasks in the task group';
+    updateStatusMessage('There were no tasks in the task group');
     return;
   }
   elements.info.style.display = 'none';
@@ -598,9 +430,17 @@ function render(tasks) {
   /** @type {Array<Node | null>} */
   const nodesMaybe = tasks.map((task) => {
     const { runs } = task.status;
-    if (!runs || !runs.length || !runs[0].started || !runs[0].resolved) {
+    if (
+      !runs ||
+      !runs.length ||
+      !runs[0].started ||
+      !runs[0].resolved ||
+      // Actions aren't interesting to visualilze.
+      task.task.metadata.name.startsWith('Action: ')
+    ) {
       return null;
     }
+
     // Only run on completed runs.
     if (runs.some((run) => run.reasonResolved === 'completed')) {
       return makeNode(task);
@@ -624,10 +464,10 @@ function render(tasks) {
   const starts = nodes.map((node) => node.start);
   // const ends = nodes.map((node) => node.end);
 
-  let totalDuration = 0;
-  for (const duration of durations) {
-    totalDuration += duration;
-  }
+  // let totalDuration = 0;
+  // for (const duration of durations) {
+  //   totalDuration += duration;
+  // }
 
   const minDuration = Math.min(...durations);
   const maxDuration = Math.max(...durations);
@@ -647,13 +487,9 @@ function render(tasks) {
     return { source, target };
   });
 
-  console.log('nodes', nodes);
-  console.log('links', links);
-  console.log('tasks', tasks);
-
-  asAny(window).nodes = nodes;
-  asAny(window).links = links;
-  asAny(window).tasks = tasks;
+  exposeAsGlobal('nodes', nodes);
+  exposeAsGlobal('links', links);
+  exposeAsGlobal('tasks', tasks);
 
   /**
    * @typedef {d3.SimulationNodeDatum} SimulationNodeDatum
@@ -688,9 +524,9 @@ function render(tasks) {
     return asAny(node);
   }
 
-  const screenSize = Math.sqrt(
-    window.innerWidth ** 2 + window.innerHeight ** 2,
-  );
+  // const screenSize = Math.sqrt(
+  //   window.innerWidth ** 2 + window.innerHeight ** 2,
+  // );
 
   // Create a simulation with several forces.
   const simulation = d3
@@ -851,6 +687,17 @@ function render(tasks) {
               `${getServer()}/tasks/groups/${node.task.status.taskGroupId}`,
               '_blank',
             );
+          },
+        },
+        {
+          label: `Ignore task group <b>"${node.task.status.taskGroupId}"</b>`,
+          action() {
+            const ids = getIgnoredTaskGroupIds();
+            ids.push(node.task.status.taskGroupId);
+
+            const urlParams = new URLSearchParams(window.location.search);
+            urlParams.set('ignoredTaskGroupIds', ids.join(','));
+            changeLocation(urlParams);
           },
         },
         getMergeAction(node.taskType),

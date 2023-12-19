@@ -7,8 +7,8 @@ declare interface Run {
   workerId: string; // "succeed";
   takenUntil: string; // "2023-09-19T20:33:46.188Z";
   scheduled: string; // "2023-09-19T20:13:45.402Z";
-  started: string; // "2023-09-19T20:13:46.193Z";
-  resolved: string; // "2023-09-19T20:13:46.266Z";
+  started?: string; // "2023-09-19T20:13:46.193Z";
+  resolved?: string; // "2023-09-19T20:13:46.266Z";
 }
 
 declare interface Task {
@@ -57,7 +57,7 @@ declare interface Task {
     };
     extra: {
       index: { rank: 0 };
-      parent: string; // "Fo1npr9eTFqsAj4DFlqBbA";
+      parent: string; // The task's group id "Fo1npr9eTFqsAj4DFlqBbA";
     };
   };
 }
