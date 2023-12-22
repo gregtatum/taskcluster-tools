@@ -1,4 +1,45 @@
 /**
+ * @param {TaskGraph} taskGraph
+ * @param {boolean} isMergeChunks
+ * @param {string[] | null} mergeTaskTypes
+ * @returns {TaskAndStatus[]}
+ */
+export function taskGraphToTasks(taskGraph, isMergeChunks, mergeTaskTypes) {
+  /** @type {TaskAndStatus[]} */
+  let tasks = [];
+  for (const taskDefinition of Object.values(taskGraph)) {
+    /** @type {TaskStatus} */
+    const status = {
+      taskId: taskDefinition.task_id,
+      provisionerId: 'none',
+      workerType: 'none',
+      taskQueueId: 'none',
+      schedulerId: 'none',
+      projectId: 'none',
+      taskGroupId: 'none',
+      deadline: 'none',
+      expires: 'none',
+      retriesLeft: 0,
+      state: 'none',
+    };
+    tasks.push({ status, task: taskDefinition.task });
+  }
+
+  if (isMergeChunks) {
+    tasks = mergeChunks(tasks);
+    mutateAndRemoveMissingDependencies(tasks);
+  }
+
+  if (mergeTaskTypes) {
+    for (const mergeTaskType of mergeTaskTypes) {
+      tasks = doMergeTaskTypes(tasks, mergeTaskType);
+    }
+  }
+
+  return tasks;
+}
+
+/**
  * From local storage, retain the relationships of task to group. This saves on
  * some API requests which will not change relationships.
  *
@@ -36,7 +77,7 @@ function setTaskToGroup(taskToGroup, taskId, taskGroupId) {
  * @param {string[] | null} mergeTaskTypes
  * @param {(message: string) => void} updateStatusMessage
  * @param {Set<string>} ignoredTaskGroupIds
- * @returns {Promise<{ mergedTasks: Task[], taskGroups: TaskGroup[]} | null>}
+ * @returns {Promise<{ mergedTasks: TaskAndStatus[], taskGroups: TaskGroup[]} | null>}
  */
 export async function getTasks(
   taskGroupIds,
@@ -130,7 +171,7 @@ export async function getTasks(
           continue;
         }
 
-        taskGroupId = /** @type {Task["task"]} */ (json).taskGroupId;
+        taskGroupId = /** @type {Task} */ (json).taskGroupId;
         setTaskToGroup(taskToGroup, taskId, taskGroupId);
       }
       if (
@@ -176,7 +217,7 @@ export async function getTasks(
 
   // Get all of the tasks into a flat list.
 
-  /** @type {Task[]} */
+  /** @type {TaskAndStatus[]} */
   let tasks = [];
   for (const { tasks: tasksList } of taskGroups) {
     for (const task of tasksList) {
@@ -201,13 +242,13 @@ export async function getTasks(
   return { mergedTasks: tasks, taskGroups };
 }
 /**
- * @param {Task[]} tasks
- * @return {Task[]}
+ * @param {TaskAndStatus[]} tasks
+ * @return {TaskAndStatus[]}
  */
-function mergeChunks(tasks) {
-  /** @type {Task[]} */
+export function mergeChunks(tasks) {
+  /** @type {TaskAndStatus[]} */
   const mergedTasks = [];
-  /** @type {Map<string, Task>} */
+  /** @type {Map<string, TaskAndStatus>} */
   const keyToMergedTask = new Map();
   /** @type {Map<string, string>} */
   const taskIdToMergedId = new Map();
@@ -265,7 +306,7 @@ export function isTaskGroupIdValid(id) {
 }
 
 /**
- * @param {Task[]} tasks
+ * @param {TaskAndStatus[]} tasks
  */
 function mutateAndRemoveMissingDependencies(tasks) {
   // Figure out which taskIds are actually present.
@@ -284,14 +325,14 @@ function mutateAndRemoveMissingDependencies(tasks) {
 }
 
 /**
- * @param {Task[]} tasks
+ * @param {TaskAndStatus[]} tasks
  * @param {string} mergeTaskType
- * @return {Task[]}
+ * @return {TaskAndStatus[]}
  */
 function doMergeTaskTypes(tasks, mergeTaskType) {
-  /** @type {Task[]} */
+  /** @type {TaskAndStatus[]} */
   const mergedTasks = [];
-  /** @type {Map<string, Task>} */
+  /** @type {Map<string, TaskAndStatus>} */
   const keyToMergedTask = new Map();
   /** @type {Map<string, string>} */
   const taskIdToMergedId = new Map();

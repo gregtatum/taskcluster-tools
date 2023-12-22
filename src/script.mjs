@@ -1,5 +1,9 @@
 // @ts-check
-import { getTasks, isTaskGroupIdValid } from './taskcluster.mjs';
+import {
+  getTasks,
+  isTaskGroupIdValid,
+  taskGraphToTasks,
+} from './taskcluster.mjs';
 import { getProfile } from './profiler.mjs';
 import {
   asAny,
@@ -11,6 +15,11 @@ import {
 //   > 'd3' refers to a UMD global, but the current file is a module.
 //   > Consider adding an import instead.
 const d3 = window.d3;
+
+// Work around ts(2686)
+//   > 'd3' refers to a UMD global, but the current file is a module.
+//   > Consider adding an import instead.
+const dat = window.dat;
 
 console.log('Override the profiler origin with window.profilerOrigin');
 // asAny(window).profilerOrigin = 'https://profiler.firefox.com';
@@ -37,13 +46,37 @@ init().catch((error) => {
   console.log(error);
 });
 
+/**
+ * @param {TaskGraph} taskGraph
+ */
+async function loadTaskGraphJSON(taskGraph) {
+  // updateStatusMessage('Fetching the tasks…');
+  // const response = await fetch('assets/task-graph.json');
+
+  // /** @type {TaskGraph} */
+  // const taskGraph = await response.json();
+  const tasks = taskGraphToTasks(
+    taskGraph,
+    getIsMergeChunks(),
+    getMergeTaskTypes(),
+  );
+
+  exposeAsGlobal('taskGraph', taskGraph);
+  exposeAsGlobal('tasks', tasks);
+  render(tasks, true /* isTaskGraphDefinition */);
+}
+
 async function init() {
+  const taskGroupIds = getTaskGroupIds();
+  if (taskGroupIds.length === 0) {
+    return;
+  }
   updateStatusMessage('Fetching the tasks…');
 
   const server = getServer();
 
   const result = await getTasks(
-    getTaskGroupIds(),
+    taskGroupIds,
     server,
     getIsMergeChunks(),
     getFetchDependentTasks(),
@@ -55,7 +88,7 @@ async function init() {
   if (result) {
     const { mergedTasks, taskGroups } = result;
     exposeAsGlobal('taskGroups', taskGroups);
-    render(mergedTasks);
+    render(mergedTasks, false /* isTaskGraphDefinition */);
     setupProfilerButton(taskGroups, new URL(server));
   } else {
     updateStatusMessage('No tasks were found.');
@@ -86,6 +119,7 @@ function changeLocation(urlParams) {
 }
 
 function setupHandlers() {
+  handleFileDrop();
   elements.server.value = getServer();
   elements.server.addEventListener('keydown', (event) => {
     if (event.key === 'Enter') {
@@ -345,9 +379,10 @@ function getIgnoredTaskGroupIds() {
 }
 
 /**
- * @param {Task[]} tasks
+ * @param {TaskAndStatus[]} tasks
+ * @param {boolean} isTaskGraphDefinition
  */
-function render(tasks) {
+function render(tasks, isTaskGraphDefinition) {
   if (tasks.length === 0) {
     updateStatusMessage('There were no tasks in the task group');
     return;
@@ -368,6 +403,119 @@ function render(tasks) {
     }
   }
 
+  const gui = new dat.GUI();
+  const guiControls = {
+    nodeSize: 1,
+    linkSize: 1,
+  };
+
+  /**
+   * @type {Record<string, number>}
+   */
+  const orderingX = {
+    build: -0.2,
+    toolchain: -0.2,
+    fetch: 0,
+    dataset: 0.3,
+    'train-backwards': 0.5,
+    'train-teacher': 0.7,
+    'train-student': 0.9,
+    train: 0.8,
+    evaluate: 1.0,
+
+    quantize: 2,
+    export: 2,
+    all: 2,
+  };
+
+  /**
+   * @type {Record<string, number>}
+   */
+  const orderingY = {
+    train: 0.9,
+    merge: 0.9,
+    evaluate: 0.0,
+  };
+
+  /**
+   * @type {Record<string, number>}
+   */
+  const nodeScale = {
+    build: 1,
+    fetch: 1,
+    merge: 2,
+    translate: 2,
+    dataset: 1,
+    train: 5,
+    'train-vocab': 1,
+    all: 1,
+  };
+
+  /** @type {Record<string, number>} */
+  const groups = {
+    train: 0,
+    finetune: 0,
+
+    'train-vocab': 1,
+    alignments: 1,
+
+    build: 2,
+    fetch: 2,
+    toolchain: 2,
+
+    all: 3,
+    export: 3,
+    quantize: 3,
+
+    evaluate: 4,
+    score: 4,
+
+    dataset: 5,
+
+    clean: 6,
+    bicleaner: 6,
+    cefilter: 6,
+
+    split: 7,
+    collect: 7,
+    extract: 7,
+
+    translate: 8,
+  };
+
+  /**
+   * @param {Node} d
+   */
+  function getNodeRadius(d) {
+    const minSize = 6;
+    if (isTaskGraphDefinition) {
+      return (
+        minSize *
+        (nodeScale[d.taskType2] ?? nodeScale[d.taskType] ?? 1) *
+        guiControls.nodeSize
+      );
+    }
+    const range = maxDuration - minDuration;
+    if (range === 0) {
+      return minSize * guiControls.nodeSize;
+    }
+    return (
+      Math.max(minSize, Math.sqrt(d.duration / range / Math.PI) * 150) *
+      guiControls.nodeSize
+    );
+  }
+
+  gui.add(guiControls, 'nodeSize', 0.1, 10).onChange(() => {
+    node.attr('r', getNodeRadius);
+
+    simulation.force('collision', collisionForce);
+    simulation.alpha(0.3).restart();
+  });
+  gui.add(guiControls, 'linkSize', 0.1, 10).onChange(() => {
+    simulation.force('link', linkForce);
+    simulation.alpha(0.3).restart();
+  });
+
   // Specify the dimensions of the chart.
   const width = window.innerWidth;
   const height = window.innerHeight;
@@ -376,14 +524,20 @@ function render(tasks) {
   const color = d3.scaleOrdinal(d3.schemeCategory10);
 
   /**
-   * @param {Task} task
+   * @param {TaskAndStatus} task
    * @param {number} count
    */
   function getTaskType(task, count) {
-    const { label } = task.task.tags;
+    let { label } = task.task.tags;
     if (!label) {
       return '';
     }
+    // Handle things like "build (merged)"
+    label = label.split(' ')[0];
+    if (!label) {
+      return '';
+    }
+
     const parts = label.split('-');
     if (parts.length < count) {
       return '';
@@ -391,45 +545,56 @@ function render(tasks) {
     return parts.slice(0, count).join('-');
   }
 
-  const types = [...new Set(tasks.map((task) => getTaskType(task, 1)))];
+  const typesSet = new Set(tasks.map((task) => getTaskType(task, 1)));
+
+  let maxOrdinal = 0;
+  for (const [key, ordinal] of Object.entries(groups)) {
+    typesSet.delete(key);
+    maxOrdinal = Math.max(ordinal);
+  }
+  const typesArray = [...typesSet];
+
+  /**
+   * @param {string} taskType
+   * @param {string} taskType2
+   * @returns {number}
+   */
+  function getGroup(taskType, taskType2) {
+    return (
+      groups[taskType2] ??
+      groups[taskType] ??
+      typesArray.findIndex((type) => type === taskType) + maxOrdinal
+    );
+  }
 
   /**
    * This node function exists so that Typescript can infer the type.
-   * @param {Task} task
+   * @param {TaskAndStatus} task
    */
   function makeNode(task) {
     const { runs } = task.status;
-    if (!runs) {
-      throw new Error('Expected a run.');
-    }
-
     let duration = 0;
     let start = Infinity;
     let end = 0;
-
-    for (const { started, reasonResolved, resolved } of runs) {
-      if (reasonResolved === 'completed') {
-        const runStart = new Date(started).valueOf();
-        const runEnd = new Date(resolved).valueOf();
-        duration += runEnd - runStart;
-        start = Math.min(start, runStart);
-        end = Math.max(end, runEnd);
+    if (runs) {
+      for (const { started, reasonResolved, resolved } of runs) {
+        if (reasonResolved === 'completed') {
+          const runStart = new Date(asAny(started)).valueOf();
+          const runEnd = new Date(asAny(resolved)).valueOf();
+          duration += runEnd - runStart;
+          start = Math.min(start, runStart);
+          end = Math.max(end, runEnd);
+        }
       }
     }
     if (start === Infinity) {
-      throw new Error('Could not find a start.');
+      start = 0;
     }
-    if (end === 0) {
-      throw new Error('Could not find an end.');
-    }
-
-    // const start = new Date(runs[0].started).valueOf();
-    // const end = new Date(runs[0].resolved).valueOf();
-    // const duration = end - start;
 
     const label = task.task.tags.label ?? task.task.metadata.name;
     const taskType = getTaskType(task, 1);
-
+    const taskType2 = getTaskType(task, 2);
+    const taskType3 = getTaskType(task, 3);
     return {
       id: task.status.taskId,
       x: Math.random() * width,
@@ -439,10 +604,10 @@ function render(tasks) {
       start,
       end,
       taskType,
-      taskType2: getTaskType(task, 2),
-      taskType3: getTaskType(task, 3),
+      taskType2,
+      taskType3,
       dependencies: task.task.dependencies,
-      group: types.findIndex((type) => type === taskType),
+      group: getGroup(taskType, taskType2),
       task,
     };
   }
@@ -453,6 +618,10 @@ function render(tasks) {
 
   /** @type {Array<Node | null>} */
   const nodesMaybe = tasks.map((task) => {
+    if (isTaskGraphDefinition) {
+      // There are no runs, so just make the node every time.
+      return makeNode(task);
+    }
     const { runs } = task.status;
     if (
       !runs ||
@@ -483,15 +652,9 @@ function render(tasks) {
       return node;
     });
 
-  /** @type {number[]} */
+  /** @type {Array<number>} */
   const durations = nodes.map((node) => node.duration);
   const starts = nodes.map((node) => node.start);
-  // const ends = nodes.map((node) => node.end);
-
-  // let totalDuration = 0;
-  // for (const duration of durations) {
-  //   totalDuration += duration;
-  // }
 
   const minDuration = Math.min(...durations);
   const maxDuration = Math.max(...durations);
@@ -521,17 +684,6 @@ function render(tasks) {
 
   /**
    * Work around a type definition issue.
-   * @param {(node: Node) => any} callback
-   * @returns {(d: d3.SimulationNodeDatum) => any}
-   */
-  function dAsNode(callback) {
-    /** @type {any} */
-    const anyCallback = callback;
-    return anyCallback;
-  }
-
-  /**
-   * Work around a type definition issue.
    * @param {{ source: any, target: any }} link
    * @returns {{source: Node, target: Node}}
    */
@@ -548,61 +700,78 @@ function render(tasks) {
     return asAny(node);
   }
 
-  // const screenSize = Math.sqrt(
-  //   window.innerWidth ** 2 + window.innerHeight ** 2,
-  // );
+  /**
+   * @param {{ source: any; target: any; }} d
+   */
+  function getLinkDistance(d) {
+    const { source, target } = asLink(d);
+    const sourceNode = nodes.find((node) => node.id === source.id);
+    const targetNode = nodes.find((node) => node.id === target.id);
+    if (!sourceNode) {
+      throw new Error('Could not find source node.');
+    }
+    if (!targetNode) {
+      throw new Error('Could not find source node.');
+    }
+    const totalDuration = maxDuration - minDuration;
+    let averageDuration = 0;
+    if (totalDuration > 0) {
+      averageDuration =
+        (sourceNode.duration + targetNode.duration) / totalDuration;
+    }
+
+    return (
+      (10 + 800 * Math.sqrt(averageDuration / Math.PI)) *
+        guiControls.linkSize ** 2 +
+      getNodeRadius(source) +
+      getNodeRadius(target)
+    );
+  }
+
+  const forceLink = d3.forceLink(links).id((d) => asNode(d).id);
+
+  const collisionForce = d3
+    .forceCollide()
+    .radius((d) => getNodeRadius(asNode(d)))
+    .strength(0.2);
+
+  const linkForce = forceLink.distance(getLinkDistance);
 
   // Create a simulation with several forces.
   const simulation = d3
     .forceSimulation(nodes)
-    .force(
-      'link',
-      d3
-        .forceLink(links)
-        .id(dAsNode((d) => d.id))
-        .distance((d) => {
-          const { source, target } = asLink(d);
-          const sourceNode = nodes.find((node) => node.id === source.id);
-          const targetNode = nodes.find((node) => node.id === target.id);
-          if (!sourceNode) {
-            throw new Error('Could not find source node.');
-          }
-          if (!targetNode) {
-            throw new Error('Could not find source node.');
-          }
-          const totalDuration = maxDuration - minDuration;
-          const averageDuration =
-            (sourceNode.duration + targetNode.duration) / totalDuration;
-
-          return 10 + 800 * Math.sqrt(averageDuration / Math.PI);
-
-          // return (
-          //   10 +
-          //   20000 *
-          //     Math.sqrt(
-          //       (screenSize * averageDuration) / Math.PI / totalDuration,
-          //     )
-          // ); // Adjust the base distance and factor as needed.
-        }),
-    )
+    .force('link', linkForce)
     .force('charge', d3.forceManyBody())
+    .force('collision', collisionForce)
     .force(
       'forceX',
       d3
-        .forceX(
-          dAsNode((d) => {
-            const margin = 0.2;
-            const duration = maxStart - minStart;
-            return (
-              width * margin +
-              ((d.start - minStart) / duration) * (width * (1 - margin * 2))
-            );
-          }),
-        )
-        .strength(0.08),
+        .forceX((d) => {
+          const duration = maxStart - minStart;
+          const { start, taskType, taskType2 } = asNode(d);
+          if (duration === 0) {
+            // When there is no duration, keep this centered.
+            return width * (orderingX[taskType2] ?? orderingX[taskType] ?? 0.5);
+          }
+
+          const margin = 0.2;
+          // Spread out the force left to right based on the task' start time.
+          return (
+            width * margin +
+            ((start - minStart) / duration) * (width * (1 - margin * 2))
+          );
+        })
+        .strength(0.04),
     )
-    // })
-    .force('forceY', d3.forceY(height / 2).strength(0.08))
+    .force(
+      'forceY',
+      d3
+        .forceY((d) => {
+          const { taskType, taskType2 } = asNode(d);
+          return height * (orderingY[taskType2] ?? orderingY[taskType] ?? 0.5);
+        })
+        .strength(0.04),
+    )
     .on('tick', () => {
       link
         .attr('x1', (d) => asLink(d).source.x)
@@ -613,7 +782,10 @@ function render(tasks) {
           const dx = target.x - source.x;
           const dy = target.y - source.y;
           const dist = Math.sqrt(dx ** 2 + dy ** 2);
-          const t = (dist - radius) / dist;
+          let t = 1;
+          if (dist > 0) {
+            t = (dist - radius) / dist;
+          }
           return source.x + t * dx;
         })
         .attr('y2', (d) => {
@@ -622,7 +794,10 @@ function render(tasks) {
           const dx = target.x - source.x;
           const dy = target.y - source.y;
           const dist = Math.sqrt(dx ** 2 + dy ** 2);
-          const t = (dist - radius) / dist;
+          let t = 1;
+          if (dist > 0) {
+            t = (dist - radius) / dist;
+          }
           return source.y + t * dy;
         });
 
@@ -639,23 +814,11 @@ function render(tasks) {
     .attr('viewBox', [0, 0, width, height].join(' '))
     .attr('style', 'max-width: 100%; height: auto;');
 
-  /**
-   * @param {Node} d
-   */
-  function getNodeRadius(d) {
-    const range = maxDuration - minDuration;
-    // return Math.max(
-    //   6,
-    //   Math.sqrt((screenSize * d.duration) / Math.PI / totalDuration) * 7,
-    // );
-    return Math.max(6, Math.sqrt(d.duration / range / Math.PI) * 150);
-  }
-
   // Add a line for each link, and a circle for each node.
   const link = svg
     .append('g')
-    .attr('stroke', '#999')
-    .attr('stroke-opacity', 0.6)
+    .attr('stroke', '#000')
+    .attr('stroke-opacity', 0.2)
     .selectAll()
     .data(links)
     .join('line')
@@ -800,14 +963,13 @@ function render(tasks) {
     .on('drag', (event) => {
       event.subject.fx = event.x;
       event.subject.fy = event.y;
+    })
+    .on('end', (event) => {
+      // Restore the target alpha so the simulation cools after dragging ends.
+      if (!event.active) {
+        simulation.alphaTarget(0);
+      }
     });
-  // .on('end', (event) => {
-  //   // Restore the target alpha so the simulation cools after dragging ends.
-  //   // Unfix the subject position now that it’s no longer being dragged.
-  //   if (!event.active) simulation.alphaTarget(0);
-  //   event.subject.fx = null;
-  //   event.subject.fy = null;
-  // });
 
   node.call(asAny(nodeDrag));
 
@@ -845,4 +1007,35 @@ function render(tasks) {
     `);
 
   elements.graph.appendChild(ensureExists(svg.node()));
+}
+
+function handleFileDrop() {
+  document.body.addEventListener('dragover', (event) => {
+    event.preventDefault();
+    document.body.style.opacity = '0.5';
+  });
+  document.body.addEventListener('dragleave', (event) => {
+    event.preventDefault();
+    document.body.style.opacity = '1.0';
+  });
+  document.body.addEventListener('drop', async (event) => {
+    document.body.style.opacity = '1.0';
+    event.preventDefault();
+    event.stopImmediatePropagation();
+
+    const file = event.dataTransfer?.files[0];
+
+    if (file && file.type === 'application/json') {
+      const json = await new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onload = (readerEvent) => {
+          resolve(JSON.parse(asAny(readerEvent.target?.result)));
+        };
+        reader.readAsText(file);
+      });
+      loadTaskGraphJSON(json);
+    } else {
+      alert('Please drop a valid JSON file.');
+    }
+  });
 }
