@@ -120,6 +120,7 @@ function changeLocation(urlParams) {
 
 function setupHandlers() {
   handleFileDrop();
+  handleFileURL();
   elements.server.value = getServer();
   elements.server.addEventListener('keydown', (event) => {
     if (event.key === 'Enter') {
@@ -1038,4 +1039,26 @@ function handleFileDrop() {
       alert('Please drop a valid JSON file.');
     }
   });
+}
+
+function handleFileURL() {
+  const urlParams = new URLSearchParams(window.location.search);
+  const taskGraph = urlParams.get('taskGraph');
+  if (!taskGraph) {
+    return;
+  }
+  try {
+    new URL(taskGraph);
+  } catch (error) {
+    console.error('The taskgraph is not a valid URL', error);
+    return;
+  }
+
+  console.log('Fetching:', taskGraph);
+  fetch(taskGraph)
+    .then((response) => response.json())
+    .then(loadTaskGraphJSON)
+    .catch((error) =>
+      console.error('Failed to load the taskgraph json', error),
+    );
 }
