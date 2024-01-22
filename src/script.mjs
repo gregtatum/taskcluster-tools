@@ -22,8 +22,8 @@ const d3 = window.d3;
 const dat = window.dat;
 
 console.log('Override the profiler origin with window.profilerOrigin');
-// asAny(window).profilerOrigin = 'https://profiler.firefox.com';
-asAny(window).profilerOrigin = 'http://localhost:4242/';
+asAny(window).profilerOrigin = 'https://profiler.firefox.com';
+// asAny(window).profilerOrigin = 'http://localhost:4242';
 
 const elements = {
   taskGroup: /** @type {HTMLInputElement} */ (getElement('taskGroup')),
