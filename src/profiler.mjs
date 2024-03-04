@@ -369,12 +369,13 @@ function getTaskSchema() {
  * @returns {Profile}
  */
 export function getProfile(taskGroups, url) {
+  console.log(`!!! getProfile`);
   const profile = getEmptyProfile();
 
   let profileStartTime = Infinity;
 
   // Compute the start and end of each task group.
-  const taskGroupTimeRanges = taskGroups.map((taskGroup) => {
+  const taskGroupAndTiming = taskGroups.map((taskGroup) => {
     /** @type {null | number} */
     let start = null;
     /** @type {null | number} */
@@ -410,8 +411,17 @@ export function getProfile(taskGroups, url) {
     if (start !== null) {
       profileStartTime = Math.min(profileStartTime, start);
     }
-    return { start, end };
+    return {
+      taskGroup,
+      taskGroupTimeRange: { start, end },
+    };
   });
+
+  taskGroupAndTiming.sort(
+    (a, b) =>
+      (a.taskGroupTimeRange.end ?? a.taskGroupTimeRange.start ?? 0) -
+      (b.taskGroupTimeRange.end ?? b.taskGroupTimeRange.start ?? 0),
+  );
 
   if (profileStartTime === Infinity) {
     // No start time was determined, as there were no runs yet with a start time.
@@ -430,10 +440,53 @@ export function getProfile(taskGroups, url) {
   let tid = 0;
   let pid = 0;
 
+  let prevStart = null;
+  let offset = 0;
+  for (const { taskGroup, taskGroupTimeRange } of [
+    ...taskGroupAndTiming,
+  ].reverse()) {
+    console.log(`!!! taskGroupTimeRange`, taskGroupTimeRange);
+    const { start, end } = taskGroupTimeRange;
+    if (prevStart === null) {
+      prevStart = start;
+      continue;
+    }
+    if (end !== null) {
+      offset += prevStart - end;
+    } else if (start !== null) {
+      offset += prevStart - start;
+    } else {
+      continue;
+    }
+    console.log(`!!! offset`, offset, taskGroup);
+    // Apply the offsets to the task group.
+    if (end !== null) {
+      taskGroupTimeRange.end = end + offset;
+    }
+    if (start !== null) {
+      taskGroupTimeRange.start = start + offset;
+      prevStart = taskGroupTimeRange.start;
+    }
+
+    // Apply the offsets to the runs.
+    for (const task of taskGroup.tasks) {
+      for (const run of task.status.runs ?? []) {
+        if (run.started) {
+          const time = new Date(run.started).valueOf();
+          run.started = new Date(time + offset).toISOString();
+        }
+        if (run.resolved) {
+          const time = new Date(run.resolved).valueOf();
+          run.resolved = new Date(time + offset).toISOString();
+        }
+      }
+    }
+  }
+
   // Create a "thread" for every task group.
-  profile.threads = taskGroups.map((taskGroup, i) => {
+  profile.threads = taskGroupAndTiming.map((args) => {
+    const { taskGroup, taskGroupTimeRange } = args;
     const stringArray = new UniqueStringArray();
-    const taskGroupTimeRange = taskGroupTimeRanges[i];
 
     // Sort of the tasks by their start time.
     const sortedTasks = taskGroup.tasks.map((task) => {
