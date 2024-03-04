@@ -390,6 +390,7 @@ function render(tasks, isTaskGraphDefinition) {
   }
   elements.info.style.display = 'none';
 
+  // Find the training run name.
   for (const task of tasks) {
     const match = task.task.tags.label?.match(/^all-(\w+)-(\w+)$/);
     if (match) {
@@ -663,6 +664,7 @@ function render(tasks, isTaskGraphDefinition) {
   const maxStart = Math.max(...starts);
 
   const linksSet = new Set();
+
   for (const node of nodes) {
     for (const dependency of node.dependencies) {
       if (node.id !== dependency && nodes.some((n) => n.id === dependency)) {
@@ -670,6 +672,21 @@ function render(tasks, isTaskGraphDefinition) {
       }
     }
   }
+  const taskIdToIndex = new Map();
+  for (let index = 0; index < nodes.length; index++) {
+    taskIdToIndex.set(nodes[index].id, index);
+  }
+  const dependenciesByIds = nodes.map((node) => {
+    const deps = [];
+    for (const taskId of node.dependencies) {
+      const index = taskIdToIndex.get(taskId);
+      if (index !== undefined) {
+        deps.push(index);
+      }
+    }
+    return deps;
+  });
+  console.log(`!!! dependenciesByIds`, dependenciesByIds);
   const links = [...linksSet.values()].map((v) => {
     const [source, target] = v.split(',');
     return { source, target };
