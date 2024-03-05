@@ -117,31 +117,29 @@ function reportTime(taskGroups) {
     console.log('Task run wall time:', humanizeDuration(wallTime));
   }
 
-  console.log(
-    'Total task run time:',
-    humanizeDuration(getTimeRangeDuration(taskTimeRanges)),
-  );
+  const taskRunTime = getTimeRangeDuration(taskTimeRanges);
+  console.log('Total task run time:', humanizeDuration(taskRunTime));
 
   /**
    * @param {string} message
    * @param {(task: TaskAndStatus) => boolean} filterFn
+   * @returns {number}
    */
   const logFiltered = (message, filterFn) => {
-    console.log(
-      message,
-      humanizeDuration(
-        getTimeRangeDuration(getTaskTimeRanges(taskGroups, filterFn)),
-      ),
+    const runTime = getTimeRangeDuration(
+      getTaskTimeRanges(taskGroups, filterFn),
     );
+    console.log(message, humanizeDuration(runTime));
+    return runTime;
   };
 
-  logFiltered('Total gpu task run time:', ({ task }) =>
+  const gpuRunTime = logFiltered('Total gpu task run time:', ({ task }) =>
     task.workerType.includes('-gpu'),
   );
 
-  logFiltered(
+  console.log(
     'Total cpu task run time:',
-    ({ task }) => !task.workerType.includes('-gpu'),
+    humanizeDuration(taskRunTime - gpuRunTime),
   );
 
   logFiltered('Training time:', ({ task }) => {
