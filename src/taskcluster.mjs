@@ -215,6 +215,11 @@ export async function getTasks(
     }
   }
 
+  // Do a stable sort based on expires.
+  taskGroups.sort(
+    (a, b) => Number(new Date(a.expires)) - Number(new Date(b.expires)),
+  );
+
   // Get all of the tasks into a flat list.
 
   /** @type {TaskAndStatus[]} */
@@ -385,4 +390,74 @@ function doMergeTaskTypes(tasks, mergeTaskType) {
   }
 
   return mergedTasks;
+}
+
+/**
+ * @param {TaskGroup[]} taskGroups
+ * @param {(task: TaskAndStatus) => boolean} filterTask
+ * @returns {TimeRange[]}
+ */
+export function getTaskGroupTimeRanges(taskGroups, filterTask = () => true) {
+  return taskGroups.map((taskGroup) => {
+    /** @type {null | number} */
+    let start = null;
+    /** @type {null | number} */
+    let end = null;
+    for (const taskAndStatus of taskGroup.tasks) {
+      const { runs } = taskAndStatus.status;
+      if (runs && filterTask(taskAndStatus)) {
+        for (const run of runs) {
+          // Attempt to parse a Date. The results will be NaN on failure.
+          const startedMS = new Date(
+            run.started ?? run.resolved ?? '',
+          ).valueOf();
+          const resolvedMS = new Date(run.resolved ?? '').valueOf();
+
+          if (!Number.isNaN(startedMS)) {
+            if (start === null) {
+              start = startedMS;
+            } else {
+              start = Math.min(start, startedMS);
+            }
+          }
+          if (!Number.isNaN(resolvedMS)) {
+            if (end === null) {
+              end = resolvedMS;
+            } else {
+              end = Math.max(end, resolvedMS);
+            }
+          }
+        }
+      }
+    }
+    return { start, end };
+  });
+}
+
+/**
+ * @param {TaskGroup[]} taskGroups
+ * @param {(task: TaskAndStatus) => boolean} filterFn
+ * @returns {TimeRange[]}
+ */
+export function getTaskTimeRanges(taskGroups, filterFn = () => true) {
+  /** @type {Array<TimeRange | null>} */
+  const timeRangeOrNull = taskGroups.flatMap((taskGroup) => {
+    return taskGroup.tasks.flatMap((task) => {
+      if (!filterFn(task)) {
+        return null;
+      }
+      const { runs } = task.status;
+      if (!runs) {
+        return [];
+      }
+      return runs.map((run) => {
+        const start = new Date(run.started ?? run.resolved ?? '').valueOf();
+        const end = new Date(run.resolved ?? '').valueOf();
+        return { start, end };
+      });
+    });
+  });
+
+  // @ts-ignore
+  return timeRangeOrNull.filter((timeRange) => timeRange);
 }

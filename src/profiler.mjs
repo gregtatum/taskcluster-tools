@@ -1,5 +1,7 @@
 // @ts-check
 
+import { getTaskGroupTimeRanges } from './taskcluster.mjs';
+
 /**
  * @typedef {number} IndexIntoStringTable
  */
@@ -271,7 +273,7 @@ function getEmptyProfile() {
       logicalCPUs: 0,
       symbolicationNotSupported: true,
       usesOnlyOneStackType: true,
-      markerSchema: [getTaskSchema()],
+      markerSchema: [getTaskSchema(), getTaskGroupSchema()],
       categories: getCategories(),
     },
     libs: [],
@@ -363,6 +365,44 @@ function getTaskSchema() {
   };
 }
 
+function getTaskGroupSchema() {
+  return {
+    name: 'TaskGroup',
+    tooltipLabel: '{marker.data.name}',
+    tableLabel: '{marker.data.name}',
+    chartLabel: '{marker.data.name}',
+    display: ['marker-chart', 'marker-table', 'timeline-overview'],
+    data: [
+      {
+        key: 'startTime',
+        label: 'Start time',
+        format: 'string',
+      },
+      {
+        key: 'name',
+        label: 'Task Group ID',
+        format: 'string',
+        searchable: true,
+      },
+      {
+        key: 'expires',
+        label: 'Expires',
+        format: 'string',
+      },
+      {
+        key: 'tasks',
+        label: 'Tasks',
+        format: 'integer',
+      },
+      {
+        key: 'url',
+        label: 'URL',
+        format: 'url',
+      },
+    ],
+  };
+}
+
 /**
  * @param {TaskGroup[]} taskGroups
  * @param {URL} url
@@ -374,45 +414,17 @@ export function getProfile(taskGroups, url) {
   let profileStartTime = Infinity;
 
   // Compute the start and end of each task group.
-  const taskGroupTimeRanges = taskGroups.map((taskGroup) => {
-    /** @type {null | number} */
-    let start = null;
-    /** @type {null | number} */
-    let end = null;
+  const taskGroupTimeRanges = getTaskGroupTimeRanges(taskGroups, () => true);
+  const taskGroupTimeRangesNoActions = getTaskGroupTimeRanges(
+    taskGroups,
+    ({ task }) => !task.metadata.name.startsWith('Action:'),
+  );
 
-    for (const { status } of taskGroup.tasks) {
-      const { runs } = status;
-      if (runs) {
-        for (const run of runs) {
-          // Attempt to parse a Date. The results will be NaN on failure.
-          const startedMS = new Date(
-            run.started ?? run.resolved ?? '',
-          ).valueOf();
-          const resolvedMS = new Date(run.resolved ?? '').valueOf();
-
-          if (!Number.isNaN(startedMS)) {
-            if (start === null) {
-              start = startedMS;
-            } else {
-              start = Math.min(start, startedMS);
-            }
-          }
-          if (!Number.isNaN(resolvedMS)) {
-            if (end === null) {
-              end = resolvedMS;
-            } else {
-              end = Math.max(end, resolvedMS);
-            }
-          }
-        }
-      }
-    }
+  for (const { start } of taskGroupTimeRanges) {
     if (start !== null) {
       profileStartTime = Math.min(profileStartTime, start);
     }
-    return { start, end };
-  });
-
+  }
   if (profileStartTime === Infinity) {
     // No start time was determined, as there were no runs yet with a start time.
     profileStartTime = 0;
@@ -434,6 +446,7 @@ export function getProfile(taskGroups, url) {
   profile.threads = taskGroups.map((taskGroup, i) => {
     const stringArray = new UniqueStringArray();
     const taskGroupTimeRange = taskGroupTimeRanges[i];
+    const taskGroupTimeRangeNoActions = taskGroupTimeRangesNoActions[i];
 
     // Sort of the tasks by their start time.
     const sortedTasks = taskGroup.tasks.map((task) => {
@@ -474,6 +487,44 @@ export function getProfile(taskGroups, url) {
     }
     if (taskGroupTimeRange.end !== null) {
       thread.unregisterTime = taskGroupTimeRange.end - profileStartTime;
+    }
+
+    for (const { timeRange, markerName } of [
+      { timeRange: taskGroupTimeRange, markerName: 'TaskGroup' },
+      {
+        timeRange: taskGroupTimeRangeNoActions,
+        markerName: 'TaskGroup (no actions)',
+      },
+    ]) {
+      if (timeRange.start) {
+        const runStart = timeRange.start;
+        let runEnd = timeRange.end;
+        const durationMarker = 1;
+        const instantMarker = 2;
+        markers.startTime.push(runStart - profileStartTime);
+        if (runEnd === null) {
+          markers.endTime.push(null);
+          markers.phase.push(instantMarker);
+        } else {
+          markers.endTime.push(runEnd - profileStartTime);
+          markers.phase.push(durationMarker);
+        }
+
+        markers.category.push(5);
+        markers.name.push(stringArray.indexForString(markerName));
+
+        markers.data.push({
+          type: 'TaskGroup',
+          startTime: new Date(
+            profile.meta.startTime + profileStartTime,
+          ).toLocaleTimeString(),
+          name: taskGroup.taskGroupId,
+          expires: taskGroup.expires,
+          url: `https://${url.host}/tasks/groups/${taskGroup.taskGroupId}`,
+        });
+
+        markers.length++;
+      }
     }
 
     // Add the tasks as markers.

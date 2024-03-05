@@ -151,3 +151,13 @@ declare interface TaskDefinition {
   soft_dependencies: [];
   task_id: string;
 }
+
+interface TimeRange {
+  start: number | null;
+  end: number | null;
+}
+
+interface TimeRangeNonNull {
+  start: number;
+  end: number;
+}

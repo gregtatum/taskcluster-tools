@@ -1,5 +1,7 @@
 // @ts-check
 import {
+  getTaskGroupTimeRanges,
+  getTaskTimeRanges,
   getTasks,
   isTaskGroupIdValid,
   taskGraphToTasks,
@@ -90,9 +92,113 @@ async function init() {
     exposeAsGlobal('taskGroups', taskGroups);
     render(mergedTasks, false /* isTaskGraphDefinition */);
     setupProfilerButton(taskGroups, new URL(server));
+    reportTime(taskGroups);
   } else {
     updateStatusMessage('No tasks were found.');
   }
+}
+
+/**
+ * @param {TaskGroup[]} taskGroups
+ */
+function reportTime(taskGroups) {
+  if (getIsMergeChunks()) {
+    console.log('Reporting time is not supported with merging chunks.');
+  }
+  {
+    const wallTime = getWallTime(
+      mergeOverlappingTimeRanges(getTaskGroupTimeRanges(taskGroups)),
+    );
+    console.log('Task group wall time:', humanizeDuration(wallTime));
+  }
+  const taskTimeRanges = getTaskTimeRanges(taskGroups);
+  {
+    const wallTime = getWallTime(mergeOverlappingTimeRanges(taskTimeRanges));
+    console.log('Task run wall time:', humanizeDuration(wallTime));
+  }
+
+  console.log(
+    'Total task run time:',
+    humanizeDuration(getTimeRangeDuration(taskTimeRanges)),
+  );
+
+  /**
+   * @param {string} message
+   * @param {(task: TaskAndStatus) => boolean} filterFn
+   */
+  const logFiltered = (message, filterFn) => {
+    console.log(
+      message,
+      humanizeDuration(
+        getTimeRangeDuration(getTaskTimeRanges(taskGroups, filterFn)),
+      ),
+    );
+  };
+
+  logFiltered('Total gpu task run time:', ({ task }) =>
+    task.workerType.includes('-gpu'),
+  );
+
+  logFiltered(
+    'Total cpu task run time:',
+    ({ task }) => !task.workerType.includes('-gpu'),
+  );
+
+  logFiltered('Training time:', ({ task }) => {
+    const { name } = task.metadata;
+    return name.startsWith('train-') || name.startsWith('finetune-');
+  });
+
+  logFiltered('Translate "mono" time:', ({ task }) => {
+    const { name } = task.metadata;
+    return name.startsWith('translate-mono');
+  });
+
+  logFiltered('Translate "corpus" time:', ({ task }) => {
+    const { name } = task.metadata;
+    return name.startsWith('translate-corpus');
+  });
+
+  logFiltered('Compute alignments:', ({ task }) => {
+    const { name } = task.metadata;
+    return name.startsWith('alignments-');
+  });
+
+  logFiltered('Score the model:', ({ task }) => {
+    const { name } = task.metadata;
+    return name.startsWith('score-');
+  });
+}
+
+/**
+ * @param {TimeRange[]} timeRanges
+ */
+function getTimeRangeDuration(timeRanges) {
+  let taskTime = 0;
+  for (const { start, end } of timeRanges) {
+    if (start && end) {
+      taskTime += end - start;
+    }
+  }
+  return taskTime;
+}
+
+/**
+ * @param {TimeRange[]} timeRangesWithNulls
+ * @returns {number}
+ */
+function getWallTime(timeRangesWithNulls) {
+  const timeRanges = mergeOverlappingTimeRanges(timeRangesWithNulls);
+
+  let wallTime = 0;
+  for (const timeRange of timeRanges) {
+    const { start, end } = timeRange;
+    if (start === null || end === null) {
+      continue;
+    }
+    wallTime += end - start;
+  }
+  return wallTime;
 }
 
 /**
@@ -106,7 +212,7 @@ function getElement(id) {
   }
   return element;
 }
-
+// Wall Time: 23 days, 10 hours, 8 minutes, 47 seconds
 /**
  * @param {URLSearchParams} urlParams
  */
@@ -1061,4 +1167,88 @@ function handleFileURL() {
     .catch((error) =>
       console.error('Failed to load the taskgraph json', error),
     );
+}
+
+/**
+ * @param {number} ms
+ */
+function humanizeDuration(ms) {
+  if (ms < 0) {
+    ms = -ms;
+  }
+
+  const seconds = Math.floor(ms / 1000);
+  const minutes = Math.floor(seconds / 60);
+  const hours = Math.floor(minutes / 60);
+  const days = Math.floor(hours / 24);
+
+  const secondsRemainder = seconds % 60;
+  const minutesRemainder = minutes % 60;
+  const hoursRemainder = hours % 24;
+
+  let result = '';
+
+  if (days > 0) {
+    result += `${days} day${days > 1 ? 's' : ''}, `;
+  }
+  if (hoursRemainder > 0 || days > 0) {
+    result += `${hoursRemainder} hour${hoursRemainder > 1 ? 's' : ''}, `;
+  }
+  if (minutesRemainder > 0 || hours > 0) {
+    result += `${minutesRemainder} minute${minutesRemainder > 1 ? 's' : ''}, `;
+  }
+  result += `${secondsRemainder} second${secondsRemainder > 1 ? 's' : ''}`;
+
+  return result;
+}
+
+/**
+ * @param {TimeRange[]} timeRangesOrNull
+ * @returns {TimeRangeNonNull[]}
+ */
+function mergeOverlappingTimeRanges(timeRangesOrNull) {
+  /** @type {TimeRangeNonNull[]} */
+  const timeRanges = [];
+  for (const timeRange of timeRangesOrNull) {
+    const { start, end } = timeRange;
+    if (start && end) {
+      timeRanges.push({ start, end });
+    }
+  }
+
+  // By start, ascending start time.
+  const sorted = timeRanges.sort((a, b) => a.start - b.start);
+
+  /**
+   * @type {TimeRangeNonNull[]}
+   */
+  const result = [];
+
+  for (const curr of sorted) {
+    if (result.length === 0) {
+      // Just add the first range.
+      result.push(curr);
+      continue;
+    }
+    const prev = result.pop();
+    if (!prev) {
+      throw new Error('Unexpected pop');
+    }
+    if (curr.end <= prev.end) {
+      // Current range is completely inside previous
+      result.push(prev);
+      continue;
+    }
+    // Merges overlapping (<) and contiguous (==) ranges
+    if (curr.start <= prev.end) {
+      // Current range overlaps previous
+      result.push({ start: prev.start, end: curr.end });
+      continue;
+    }
+    // Ranges do not overlap
+    result.push(prev);
+    result.push(curr);
+  }
+
+  return result;
 }
