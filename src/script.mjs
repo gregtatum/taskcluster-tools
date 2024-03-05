@@ -109,16 +109,28 @@ function reportTime(taskGroups) {
     const wallTime = getWallTime(
       mergeOverlappingTimeRanges(getTaskGroupTimeRanges(taskGroups)),
     );
-    console.log('Task group wall time:', humanizeDuration(wallTime));
+    console.log(
+      'Task group wall time:',
+      humanizeDuration(wallTime),
+      reportHours(wallTime),
+    );
   }
   const taskTimeRanges = getTaskTimeRanges(taskGroups);
   {
     const wallTime = getWallTime(mergeOverlappingTimeRanges(taskTimeRanges));
-    console.log('Task run wall time:', humanizeDuration(wallTime));
+    console.log(
+      'Task run wall time:',
+      humanizeDuration(wallTime),
+      reportHours(wallTime),
+    );
   }
 
   const taskRunTime = getTimeRangeDuration(taskTimeRanges);
-  console.log('Total task run time:', humanizeDuration(taskRunTime));
+  console.log(
+    'Total task run time:',
+    humanizeDuration(taskRunTime),
+    reportHours(taskRunTime),
+  );
 
   /**
    * @param {string} message
@@ -129,7 +141,7 @@ function reportTime(taskGroups) {
     const runTime = getTimeRangeDuration(
       getTaskTimeRanges(taskGroups, filterFn),
     );
-    console.log(message, humanizeDuration(runTime));
+    console.log(message, humanizeDuration(runTime), reportHours(runTime));
     return runTime;
   };
 
@@ -140,6 +152,7 @@ function reportTime(taskGroups) {
   console.log(
     'Total cpu task run time:',
     humanizeDuration(taskRunTime - gpuRunTime),
+    reportHours(taskRunTime - gpuRunTime),
   );
 
   logFiltered('Training time:', ({ task }) => {
@@ -1198,6 +1211,13 @@ function humanizeDuration(ms) {
   result += `${secondsRemainder} second${secondsRemainder > 1 ? 's' : ''}`;
 
   return result;
+}
+
+/**
+ * @param {number} ms
+ */
+function reportHours(ms) {
+  return `(${Math.floor((ms / 1000 / 60) * 10) / 10} hrs)`;
 }
 
 /**
