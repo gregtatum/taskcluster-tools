@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Firefox Translations Graphs</title>
+</head>
+<body>
+  <link rel="stylesheet" href="./src/graphs/style.css">
+
+  <div id="info">
+    <h2>Firefox Translations Graphs</h2>
+    <p id="info-message">
+      Get graphs from a training run.
+    </p>
+  </div>
+
+  <div id="controls">
+    <div>
+      <input type="text" id="taskGroup" placeholder="Add a Task Group ID">
+    </div>
+    <div>
+      <input type="checkbox" id="fetchDependentTasks">
+      <label for="fetchDependentTasks">Fetch dependent tasks</label>
+    </div>
+    <div>
+      <input type="checkbox" id="logScale">
+      <label for="logScale">Log scale</label>
+    </div>
+  </div>
+
+  <div id="graph"></div>
+
+  <script src="./assets/d3.v7.min.js"></script>
+  <script src='./src/graphs/graphs.mjs' type="module"></script>
+</body>
+</html>

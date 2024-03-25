@@ -118,3 +118,26 @@ function encodeUint(value) {
   }
   return r;
 }
+
+export function getServer() {
+  const urlParams = new URLSearchParams(window.location.search);
+  const text = urlParams.get('server');
+  if (!text) {
+    return 'https://firefox-ci-tc.services.mozilla.com';
+  }
+  try {
+    const url = new URL(text);
+    return url.toString();
+  } catch (error) {
+    return 'https://firefox-ci-tc.services.mozilla.com';
+  }
+}
+
+/**
+ * @param {string} key
+ * @param {any} value
+ */
+export function exposeAsGlobal(key, value) {
+  console.log(key, value);
+  asAny(window)[key] = value;
+}

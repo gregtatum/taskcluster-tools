@@ -461,3 +461,104 @@ export function getTaskTimeRanges(taskGroups, filterFn = () => true) {
   // @ts-ignore
   return timeRangeOrNull.filter((timeRange) => timeRange);
 }
+
+/**
+ * @param {string} server
+ * @param {string} taskId
+ */
+export async function getLiveLog(server, taskId) {
+  // TODO - Only cache the log if it's complete.
+  const key = `live-log-${taskId}`;
+  const cache = localStorage.getItem(key);
+  if (cache) {
+    console.log(`Using cached live log for`, taskId);
+    return cache;
+  }
+  console.log(`Requesting live log for`, taskId);
+  const artifactPath = 'public/logs/live.log';
+  const taskUrl = `${server}/api/queue/v1/task/${taskId}/artifacts/${artifactPath}`;
+
+  const response = fetchStreamWithDebounce(taskUrl, 1000);
+  response.then((log) => {
+    localStorage.setItem(key, log);
+  });
+  return response;
+}
+
+/**
+ * Fetches a stream from a URL with a debounce mechanism. If no new data is received
+ * for a specified duration, the stream is closed and the partial data is returned.
+ *
+ * @param {string} url - The URL of the streaming endpoint.
+ * @param {number} debounceTime - The debounce time in milliseconds.
+ * @returns {Promise<string>} A promise that resolves with the concatenated stream data.
+ */
+function fetchStreamWithDebounce(url, debounceTime) {
+  return new Promise((resolve, reject) => {
+    const controller = new AbortController();
+    /** @type {any} */
+    let debounceTimer;
+    let accumulatedData = '';
+
+    const resetDebounceTimer = () => {
+      clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(() => {
+        resolve(accumulatedData);
+        controller.abort(
+          'No new data in the specified debounce time. Aborting stream.',
+        );
+      }, debounceTime);
+    };
+
+    fetch(url, { signal: controller.signal })
+      .then((response) => {
+        if (!response.body) {
+          throw new Error('ReadableStream not yet supported in this browser.');
+        }
+
+        resetDebounceTimer();
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+
+        return new ReadableStream({
+          start: (streamController) => {
+            const push = () => {
+              reader
+                .read()
+                .then(({ done, value }) => {
+                  if (done) {
+                    streamController.close();
+                    return;
+                  }
+
+                  accumulatedData += decoder.decode(value, { stream: true });
+                  resetDebounceTimer();
+                  streamController.enqueue(value);
+                  push();
+                })
+                .catch((err) => {
+                  streamController.error(err);
+                });
+            };
+
+            push();
+          },
+        });
+      })
+      .then((stream) => {
+        const reader = stream.getReader();
+        reader.closed.then(() => {
+          clearTimeout(debounceTimer);
+          resolve(accumulatedData);
+        });
+      })
+      .catch((error) => {
+        clearTimeout(debounceTimer);
+        if (error?.name === 'AbortError') {
+          resolve(accumulatedData);
+        } else {
+          reject(error);
+        }
+      });
+  });
+}

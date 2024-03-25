@@ -11,6 +11,8 @@ import {
   asAny,
   encodeUintArrayForUrlComponent,
   ensureExists,
+  exposeAsGlobal,
+  getServer,
 } from './utils.mjs';
 
 // Work around ts(2686)
@@ -223,7 +225,7 @@ function getElement(id) {
   }
   return element;
 }
-// Wall Time: 23 days, 10 hours, 8 minutes, 47 seconds
+
 /**
  * @param {URLSearchParams} urlParams
  */
@@ -353,15 +355,6 @@ function updateStatusMessage(message) {
 }
 
 /**
- * @param {string} key
- * @param {any} value
- */
-function exposeAsGlobal(key, value) {
-  console.log(key, value);
-  asAny(window)[key] = value;
-}
-
-/**
  * @param {TaskGroup[]} taskGroups
  * @param {URL} taskClusterURL
  */
@@ -442,20 +435,6 @@ function getMergeTaskTypes() {
     return [...new Set(text.split(','))];
   }
   return null;
-}
-
-function getServer() {
-  const urlParams = new URLSearchParams(window.location.search);
-  const text = urlParams.get('server');
-  if (!text) {
-    return 'https://firefox-ci-tc.services.mozilla.com';
-  }
-  try {
-    const url = new URL(text);
-    return url.toString();
-  } catch (error) {
-    return 'https://firefox-ci-tc.services.mozilla.com';
-  }
 }
 
 /**
