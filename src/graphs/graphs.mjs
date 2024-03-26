@@ -148,7 +148,11 @@ async function init() {
     updateStatusMessage('Fetching logs');
     const promises = trainingTasks.map(({ status }) => {
       if (status.runs?.length) {
-        return getLiveLog(getServer(), status.taskId);
+        return getLiveLog(
+          getServer(),
+          status.taskId,
+          status.runs[status.runs.length - 1].state,
+        );
       }
       return null;
     });

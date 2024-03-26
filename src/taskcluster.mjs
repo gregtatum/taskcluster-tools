@@ -465,23 +465,28 @@ export function getTaskTimeRanges(taskGroups, filterFn = () => true) {
 /**
  * @param {string} server
  * @param {string} taskId
+ * @param {string} taskStatus
  */
-export async function getLiveLog(server, taskId) {
+export async function getLiveLog(server, taskId, taskStatus) {
   // TODO - Only cache the log if it's complete.
   const key = `live-log-${taskId}`;
-  const cache = localStorage.getItem(key);
-  if (cache) {
-    console.log(`Using cached live log for`, taskId);
-    return cache;
+  if (taskStatus === 'completed') {
+    const cache = localStorage.getItem(key);
+    if (cache) {
+      console.log(`Using cached live log for`, taskId);
+      return cache;
+    }
   }
   console.log(`Requesting live log for`, taskId);
   const artifactPath = 'public/logs/live.log';
   const taskUrl = `${server}/api/queue/v1/task/${taskId}/artifacts/${artifactPath}`;
 
   const response = fetchStreamWithDebounce(taskUrl, 1000);
-  response.then((log) => {
-    localStorage.setItem(key, log);
-  });
+  if (taskStatus === 'completed') {
+    response.then((log) => {
+      localStorage.setItem(key, log);
+    });
+  }
   return response;
 }
 
