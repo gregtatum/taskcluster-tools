@@ -15,6 +15,9 @@ const elements = {
   fetchDependentTasks: /** @type {HTMLInputElement} */ (
     getElement('fetchDependentTasks')
   ),
+  metric: /** @type {HTMLSelectElement} */ (getElement('metric')),
+  minNumber: /** @type {HTMLInputElement} */ (getElement('minNumber')),
+  maxNumber: /** @type {HTMLInputElement} */ (getElement('maxNumber')),
 };
 
 setupHandlers();
@@ -37,6 +40,7 @@ function getElement(id) {
 }
 
 function setupHandlers() {
+  elements.taskGroup.value = getTaskGroupIds().join(',');
   elements.taskGroup.addEventListener('keydown', (event) => {
     const taskGroupId =
       /** @type {HTMLInputElement } */ elements.taskGroup.value;
@@ -100,6 +104,20 @@ function setupHandlers() {
     // Add it to the page.
     elements.controls.appendChild(div);
   }
+
+  elements.minNumber.value = '' + getMinNumber();
+  elements.minNumber.addEventListener('change', () => {
+    const urlParams = new URLSearchParams(window.location.search);
+    urlParams.set('minNumber', elements.minNumber.value);
+    changeLocation(urlParams);
+  });
+
+  elements.maxNumber.value = '' + getMaxNumber();
+  elements.maxNumber.addEventListener('change', () => {
+    const urlParams = new URLSearchParams(window.location.search);
+    urlParams.set('maxNumber', elements.maxNumber.value);
+    changeLocation(urlParams);
+  });
 }
 
 async function init() {
@@ -163,8 +181,35 @@ function render(tasks, logs) {
   exposeAsGlobal('taskUpdates', taskUpdates);
   exposeAsGlobal('taskMetrics', taskMetrics);
 
+  const metricsKeys = new Set();
+  for (const metrics of taskMetrics) {
+    if (!metrics) {
+      continue;
+    }
+    for (const key of Object.keys(metrics)) {
+      metricsKeys.add(key);
+    }
+  }
+  for (const key of [...metricsKeys].sort()) {
+    const option = document.createElement('option');
+    option.innerText = key;
+    elements.metric.appendChild(option);
+  }
+  const metric = getMetric();
+  if (metric) {
+    elements.metric.value = metric;
+  }
+  elements.metric.addEventListener('change', () => {
+    const urlParams = new URLSearchParams(window.location.search);
+    urlParams.set('metric', elements.metric.value);
+    changeLocation(urlParams);
+
+    applyGraphFilter();
+  });
+
   for (let i = 0; i < tasks.length; i++) {
     const task = tasks[i];
+    const metricRecords = taskMetrics[i] ?? {};
     const updates = taskUpdates[i];
     if (!updates) {
       continue;
@@ -179,24 +224,29 @@ function render(tasks, logs) {
       : new Date().valueOf();
 
     makeGraph(
-      updates,
+      updates.map((update) => update.cost),
+      'cost',
       task.task.metadata.name,
       `${getServer()}/tasks/${task.status.taskId}`,
       lastRun.state,
       runEnd - runStart,
       getIsLogScale(),
     );
-    // for (const metrics of taskMetrics) {
-    //   makeGraph(
-    //     updates,
-    //     task.task.metadata.name,
-    //     `${getServer()}/tasks/${task.status.taskId}`,
-    //     lastRun.state,
-    //     runEnd - runStart,
-    //     getIsLogScale(),
-    //   )
-    // }
+    for (const [key, metrics] of Object.entries(metricRecords)) {
+      makeGraph(
+        metrics.map((metric) => metric.metricValue),
+        key,
+        task.task.metadata.name,
+        `${getServer()}/tasks/${task.status.taskId}`,
+        lastRun.state,
+        runEnd - runStart,
+        getIsLogScale(),
+      );
+    }
   }
+
+  // Only filter the graphs after they are built.
+  applyGraphFilter();
 
   elements.info.style.display = 'none';
 }
@@ -246,6 +296,38 @@ function getFetchDependentTasks() {
 function getIsLogScale() {
   const urlParams = new URLSearchParams(window.location.search);
   return urlParams.get('logScale') === 'true';
+}
+
+/**
+ * @returns {number}
+ */
+function getMinNumber() {
+  const urlParams = new URLSearchParams(window.location.search);
+  const minNumber = parseInt(urlParams.get('minNumber') ?? '0');
+  if (isNaN(minNumber)) {
+    return 0;
+  }
+  return minNumber;
+}
+
+/**
+ * @returns {number | null}
+ */
+function getMaxNumber() {
+  const urlParams = new URLSearchParams(window.location.search);
+  const maxNumber = parseInt(urlParams.get('maxNumber') ?? '0');
+  if (isNaN(maxNumber) || maxNumber < getMinNumber()) {
+    return null;
+  }
+  return maxNumber;
+}
+
+/**
+ * @returns {string | null}
+ */
+function getMetric() {
+  const urlParams = new URLSearchParams(window.location.search);
+  return urlParams.get('metric');
 }
 
 /**
@@ -318,13 +400,15 @@ function parseLog(log) {
  * @returns {Record<string, EvalMetric[]>}
  */
 function parseMetrics(log) {
+  // 'Ep. 1 : Up. 5000 : bleu-detok : 1.88115 : new best';
+
   const parse = new RegExp(
     [
       `Ep\\.\\s*(?<epoch>\\d+)\\s*:\\s*`,
       `Up\\.\\s*(?<update>\\d+)\\s*:\\s*`,
       `(?<metricName>[\\w-]+)\\s*:\\s*`,
       `(?<metricValue>\\d+\\.\\d+)\\s*:\\s*`,
-      `stalled\\s*(?<stallCount>\\d+)\\s*times\\s*\\(last best: (?<lastBest>\\d+\\.\\d+)\\)`,
+      // `stalled\\s*(?<stallCount>\\d+)\\s*times\\s*\\(last best: (?<lastBest>\\d+\\.\\d+)\\)`,
     ].join(''),
   );
 
@@ -350,61 +434,97 @@ function parseMetrics(log) {
     }
   }
 
-  console.log(`!!! metricsRecord`, metricsRecord);
-
   return metricsRecord;
 }
 
 /**
  * Adds a title section to the graph container.
- * @param {d3.Selection} graphContainer - The D3 selection of the graph container.
+ * @param {d3.Selection<HTMLDivElement, number, Element | null, unknown>} graphContainer - The D3 selection of the graph container.
+ * @param {string} metric - e.g. "bleu"
  * @param {string} title - Title for the graph.
  * @param {string} link - URL to link the title to.
  * @param {string} runState - State of the run.
  * @param {number} runLengthMS - Length of the run in milliseconds.
+ * @param {number} lastValue
  */
-function addGraphTitle(graphContainer, title, link, runState, runLengthMS) {
+function addGraphTitle(
+  graphContainer,
+  metric,
+  title,
+  link,
+  runState,
+  runLengthMS,
+  lastValue,
+) {
   const titleSection = graphContainer
     .append('div')
     .style('display', 'flex')
     .style('align-items', 'center');
+
   titleSection
     .append('a')
     .attr('href', link)
     .attr('target', '_blank')
+    .attr('class', 'graph-title')
     .style('text-decoration', 'none')
     .append('h3')
     .text(title)
     .style('color', 'steelblue')
     .style('margin-right', '10px');
+
   titleSection
     .append('span')
-    .text(`[${runState}]`)
-    .style('font-weight', 'bold')
+    .text(runState)
+    .attr('class', 'task-status')
+    .style(
+      'background-color',
+      runState === 'completed' ? '#2e9d05' : 'steelblue',
+    )
     .style('margin-right', '10px');
+
   titleSection
     .append('span')
     .text(`Duration: ${formatDuration(runLengthMS)}`)
-    .style('font-style', 'italic');
+    .style('font-style', 'italic')
+    .style('margin-right', '10px');
+
+  titleSection
+    .append('span')
+    .text(`${lastValue} - ${metric}`)
+    .style('font-weight', 'bold')
+    .style('flex', 1)
+    .style('text-align', 'right')
+    .style('margin-right', '10px');
 }
 
 /**
- * @param {TrainingUpdate[]} data
+ * @param {number[]} data
+ * @param {string} metric
  * @param {string} title
  * @param {string} link
  * @param {string} runState
  * @param {number} runLengthMS
  * @param {boolean} logScale - Should the graph be in logScale?
  */
-function makeGraph(data, title, link, runState, runLengthMS, logScale) {
+function makeGraph(data, metric, title, link, runState, runLengthMS, logScale) {
   // Select the #graph container and calculate its width
   const container = d3.select('#graph');
-  const containerWidth = container.node().getBoundingClientRect().width;
+  const containerWidth = asAny(container.node()).getBoundingClientRect().width;
 
   // Create a new div for each graph
   const graphContainer = container.append('div');
+  graphContainer.attr('data-metric', metric);
 
-  addGraphTitle(graphContainer, title, link, runState, runLengthMS);
+  const lastValue = data[data.length - 1];
+  addGraphTitle(
+    graphContainer,
+    metric,
+    title,
+    link,
+    runState,
+    runLengthMS,
+    lastValue,
+  );
 
   // Set the dimensions and margins of the graph
   const margin = { top: 30, right: 30, bottom: 30, left: 60 },
@@ -429,47 +549,102 @@ function makeGraph(data, title, link, runState, runLengthMS, logScale) {
     .attr('transform', `translate(0,${height})`)
     .call(d3.axisBottom(x));
 
+  // Determine the minimum and maximum values for the Y-axis
+  const minY = getMinNumber();
+  let maxY = ensureExists(d3.max(data, (d) => d));
+  const paramMaxY = getMaxNumber();
+  if (paramMaxY) {
+    maxY = Math.min(paramMaxY, maxY);
+  }
+
   // Add Y axis with optional logarithmic scale
   const y = logScale
-    ? d3
-        .scaleLog()
-        .domain([1, d3.max(data, (d) => d.cost)])
-        .range([height, 0])
-        .clamp(true)
-    : d3
-        .scaleLinear()
-        .domain([0, d3.max(data, (d) => d.cost)])
-        .range([height, 0]);
+    ? d3.scaleLog().domain([minY, maxY]).range([height, 0]).clamp(true)
+    : d3.scaleLinear().domain([minY, maxY]).range([height, 0]);
+
   svg.append('g').call(d3.axisLeft(y).ticks(5).tickFormat(d3.format('~s')));
 
-  // Add the line
+  const smoothedData = gaussianSmooth(data, 1.0);
+  const transparentBlue = '#4682b4a1';
+
+  // Add the data line.
   svg
     .append('path')
     .datum(data)
     .attr('fill', 'none')
-    .attr('stroke', 'steelblue')
-    .attr('stroke-width', 1.5)
+    .attr('stroke', transparentBlue)
+    .attr('stroke-width', 2)
     .attr(
       'd',
+      // @ts-ignore
       d3
         .line()
         .x((d, i) => x(i))
-        .y((d) => (logScale && d.cost <= 0 ? y(1) : y(d.cost))),
+        .y((d) => (logScale && asAny(d) <= 0 ? y(1) : y(asAny(d)))),
+    );
+
+  // Add the smoothed data line.
+  svg
+    .append('path')
+    .datum(smoothedData)
+    .attr('fill', 'none')
+    .attr('stroke', 'steelblue')
+    .attr('stroke-width', 2)
+    .attr(
+      'd',
+      // @ts-ignore
+      d3
+        .line()
+        .x((d, i) => x(i))
+        .y((d) => (logScale && asAny(d) <= 0 ? y(1) : y(asAny(d)))),
+    );
+
+  // Add the area under the graph.
+  svg
+    .append('path')
+    .datum(smoothedData)
+    .attr('fill', 'steelblue')
+    .attr('fill-opacity', 0.2)
+    .attr(
+      'd',
+      asAny(
+        d3
+          .area()
+          .y0(height)
+          .x(
+            asAny(
+              /**
+               * @param {number} d
+               * @param {number} i
+               */
+              (d, i) => x(i),
+            ),
+          )
+          .y1(
+            asAny(
+              /**
+               * @param {number} d
+               */
+              (d) => (logScale && d <= 0 ? y(1) : y(d)),
+            ),
+          ),
+      ),
     );
 
   // Add tooltip functionality
-  addGraphTooltip(svg, data, x, y, logScale);
+  addGraphTooltip(svg, data, metric, x, y, logScale);
 }
 
 /**
  * Adds tooltip functionality to the graph.
- * @param {d3.Selection} svg - The D3 SVG selection to which the tooltip will be added.
- * @param {Object[]} data - Array of data points for the graph.
+ * @param {any} svg
+ * @param {number[]} data
+ * @param {string} metric - e.g. "BLEU"
  * @param {Function} x - D3 scale function for the x-axis.
  * @param {Function} y - D3 scale function for the y-axis.
  * @param {boolean} logScale - Indicates if the graph is using a log scale.
  */
-function addGraphTooltip(svg, data, x, y, logScale) {
+function addGraphTooltip(svg, data, metric, x, y, logScale) {
   // Create a tooltip div
   const tooltip = d3
     .select('body')
@@ -484,41 +659,58 @@ function addGraphTooltip(svg, data, x, y, logScale) {
     .style('padding', '5px')
     .style('position', 'absolute');
 
-  // Function to handle mouseover event
-  const mouseover = function (event, d) {
-    tooltip.style('opacity', 0.9);
-    d3.select(this).style('stroke', 'black').style('opacity', 1);
-  };
-
-  // Function to handle mousemove event
-  const mousemove = function (event, d) {
-    tooltip
-      .html(`Cost: ${d.cost}<br/>Epoch: ${d.epoch}`)
-      .style('left', event.pageX + 10 + 'px')
-      .style('top', event.pageY - 28 + 'px');
-  };
-
-  // Function to handle mouseout event
-  const mouseout = function (event, d) {
-    tooltip.style('opacity', 0);
-    d3.select(this).style('stroke', 'none').style('opacity', 0);
-  };
-
-  // Apply tooltip to the graph
   svg
     .selectAll('.dot')
     .data(data)
     .enter()
     .append('circle')
     .attr('class', 'dot')
-    .attr('cx', (d, i) => x(i))
-    .attr('cy', (d) => (logScale && d.cost <= 0 ? y(1) : y(d.cost)))
+    .attr(
+      'cx',
+      /**
+       * @param {number} _d
+       * @param {number} i
+       */
+      (_d, i) => x(i),
+    )
+    .attr(
+      'cy',
+      /**
+       * @param {number} d
+       */
+      (d) => (logScale && d <= 0 ? y(1) : y(d)),
+    )
     .attr('r', 5)
     .style('fill', 'steelblue')
-    .style('opacity', 0) // Hidden but functional for mouseover
-    .on('mouseover', mouseover)
-    .on('mousemove', mousemove)
-    .on('mouseout', mouseout);
+    .style('opacity', 0)
+    .on('mouseover', function () {
+      tooltip.style('opacity', 0.9);
+      // @ts-ignore
+      d3.select(this).style('stroke', 'black').style('opacity', 1);
+    })
+    .on(
+      'mousemove',
+      /**
+       * @param {MouseEvent} event
+       * @param {number} d
+       */
+      function (event, d) {
+        const isLeft = event.pageX > window.innerWidth * 0.66;
+        tooltip
+          .html(`${metric}: ${d}`)
+          .style('left', isLeft ? '' : event.pageX + 10 + 'px')
+          .style(
+            'right',
+            !isLeft ? '' : window.innerWidth - event.pageX - 10 + 'px',
+          )
+          .style('top', event.pageY - 28 + 'px');
+      },
+    )
+    .on('mouseout', function () {
+      tooltip.style('opacity', 0);
+      // @ts-ignore
+      d3.select(this).style('stroke', 'none').style('opacity', 0);
+    });
 }
 
 /**
@@ -543,4 +735,43 @@ function formatDuration(milliseconds) {
   duration += `${seconds}s`;
 
   return duration;
+}
+
+function applyGraphFilter() {
+  const metric = getMetric();
+  const divs = document.querySelectorAll('[data-metric]');
+  if (metric === 'all' || !metric) {
+    for (const div of asAny(divs)) {
+      div.display = 'block';
+    }
+  } else {
+    for (const div of asAny(divs)) {
+      div.style.display = div.dataset.metric === metric ? 'block' : 'none';
+    }
+  }
+}
+
+/**
+ * Applies Gaussian smoothing to an array of data.
+ * @param {number[]} data - The array of data to smooth.
+ * @param {number} sigma - The standard deviation of the Gaussian kernel.
+ * @returns {number[]} The smoothed data.
+ */
+function gaussianSmooth(data, sigma) {
+  const gaussKernel = (x) => Math.exp(-0.5 * x * x);
+  const kernelSize = Math.ceil(sigma * 3) * 2 + 1; // 3-sigma rule
+  const kernelHalfSize = Math.floor(kernelSize / 2);
+  const weights = Array.from({ length: kernelSize }, (_, i) =>
+    gaussKernel((i - kernelHalfSize) / sigma),
+  );
+  const weightSum = weights.reduce((a, b) => a + b, 0);
+
+  return data.map((_, i, arr) => {
+    let smoothedValue = 0;
+    for (let j = -kernelHalfSize; j <= kernelHalfSize; j++) {
+      const dataIdx = Math.max(0, Math.min(arr.length - 1, i + j));
+      smoothedValue += arr[dataIdx] * weights[j + kernelHalfSize];
+    }
+    return smoothedValue / weightSum;
+  });
 }

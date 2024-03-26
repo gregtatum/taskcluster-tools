@@ -19,6 +19,19 @@
       <input type="text" id="taskGroup" placeholder="Add a Task Group ID">
     </div>
     <div>
+      <label for="metric">Metric</label>
+      <select id="metric">
+        <option>all</option>
+        <option>cost</option>
+      </select>
+    </div>
+    <div>
+      <label for="minNumber">Min</label>
+      <input type="number" id="minNumber" value="0" step="1">
+      <label for="maxNumber">max</label>
+      <input type="number" id="maxNumber" value="0" step="1">
+    </div>
+    <div>
       <input type="checkbox" id="fetchDependentTasks">
       <label for="fetchDependentTasks">Fetch dependent tasks</label>
     </div>

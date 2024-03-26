@@ -1,5 +1,6 @@
 :root {
   font-family: sans-serif;
+  overflow-x: hidden;
 }
 
 input[type=text] {
@@ -56,13 +57,29 @@ input[type=text] {
 
 .axis path,
 .axis line {
-    fill: none;
-    stroke: black;
-    shape-rendering: crispEdges;
+  fill: none;
+  stroke: black;
+  shape-rendering: crispEdges;
 }
 
 .line {
-    fill: none;
-    stroke: steelblue;
-    stroke-width: 2px;
+  fill: none;
+  stroke: steelblue;
+  stroke-width: 2px;
+}
+
+.task-status {
+  display: inline-block;
+  padding: 3px 7px;
+  background-color: steelblue;
+  color: #fff;
+  border-radius: 3px;
+}
+
+#metric {
+  width: 200px;
+}
+
+input[type=number] {
+  width: 80px;
 }
