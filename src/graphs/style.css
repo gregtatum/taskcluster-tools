@@ -53,6 +53,7 @@ input[type=text] {
   align-items: center;
   justify-content: center;
   line-height: 1.7;
+  pointer-events: none;
 }
 
 .axis path,
