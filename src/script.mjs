@@ -104,6 +104,51 @@ async function init() {
  * @param {TaskGroup[]} taskGroups
  */
 function reportTime(taskGroups) {
+  // This is kind of hacky, but determine the cost of this run. The rates below
+  // are the hourly rate.
+  // https://docs.google.com/spreadsheets/d/1-mn60Kwp-IUJ99XfiUkxYv4DX-H6CQDwIUV4WnaykJk/edit#gid=118509819
+  const costPreemptibleGPU = 0.99;
+  const costNonPreemptibleGPU = 3.42;
+  const costCpu = 0.14;
+  const costs = {
+    teacher: costPreemptibleGPU,
+    student: costPreemptibleGPU,
+    backtranslations: costPreemptibleGPU,
+  };
+  for (const taskGroup of taskGroups) {
+    for (const task of taskGroup.tasks) {
+      if (task.task.metadata.name.startsWith('train-student-')) {
+        costs.student = task.task.workerType.endsWith('-standard')
+          ? costNonPreemptibleGPU
+          : costPreemptibleGPU;
+      }
+      if (task.task.metadata.name.startsWith('train-teacher-')) {
+        costs.teacher = task.task.workerType.endsWith('-standard')
+          ? costNonPreemptibleGPU
+          : costPreemptibleGPU;
+      }
+      if (task.task.metadata.name.startsWith('train-backwards-')) {
+        costs.teacher = task.task.workerType.endsWith('-standard')
+          ? costNonPreemptibleGPU
+          : costPreemptibleGPU;
+      }
+    }
+  }
+  /** @type {any[]} */
+  const table = [];
+  /**
+   * @param {string} description
+   * @param {number} hours
+   * @param {string} duration
+   * @param {number} [costPerHour]
+   */
+  function log(description, hours, duration, costPerHour) {
+    let cost = '';
+    if (costPerHour) {
+      cost = `$${(costPerHour * hours).toFixed(2)}`;
+    }
+    table.push({ description, hours, duration, cost });
+  }
   if (getIsMergeChunks()) {
     console.log('Reporting time is not supported with merging chunks.');
   }
@@ -111,76 +156,148 @@ function reportTime(taskGroups) {
     const wallTime = getWallTime(
       mergeOverlappingTimeRanges(getTaskGroupTimeRanges(taskGroups)),
     );
-    console.log(
+    log(
       'Task group wall time:',
-      humanizeDuration(wallTime),
       reportHours(wallTime),
+      humanizeDuration(wallTime),
     );
   }
   const taskTimeRanges = getTaskTimeRanges(taskGroups);
   {
     const wallTime = getWallTime(mergeOverlappingTimeRanges(taskTimeRanges));
-    console.log(
+    log(
       'Task run wall time:',
-      humanizeDuration(wallTime),
       reportHours(wallTime),
+      humanizeDuration(wallTime),
     );
   }
 
   const taskRunTime = getTimeRangeDuration(taskTimeRanges);
-  console.log(
-    'Total task run time:',
-    humanizeDuration(taskRunTime),
-    reportHours(taskRunTime),
-  );
 
   /**
    * @param {string} message
    * @param {(task: TaskAndStatus) => boolean} filterFn
+   * @param {number} [cost]
    * @returns {number}
    */
-  const logFiltered = (message, filterFn) => {
+  const logFiltered = (message, filterFn, cost) => {
     const runTime = getTimeRangeDuration(
       getTaskTimeRanges(taskGroups, filterFn),
     );
-    console.log(message, humanizeDuration(runTime), reportHours(runTime));
+    log(message, reportHours(runTime), humanizeDuration(runTime), cost);
     return runTime;
   };
 
-  const gpuRunTime = logFiltered('Total gpu task run time:', ({ task }) =>
-    task.workerType.includes('-gpu'),
+  const gpuRunTime = logFiltered(
+    'Total gpu task run time:',
+    ({ task }) =>
+      task.workerType.includes('-gpu') && task.workerType.includes('-standard'),
+    costNonPreemptibleGPU,
   );
+  const gpuPreemptibleRunTime = logFiltered(
+    'Total preemptible gpu task run time:',
+    ({ task }) =>
+      task.workerType.includes('-gpu') &&
+      !task.workerType.includes('-standard'),
+    costPreemptibleGPU,
+  );
+  const cpuTime = taskRunTime - gpuPreemptibleRunTime - gpuRunTime;
 
-  console.log(
+  log(
     'Total cpu task run time:',
-    humanizeDuration(taskRunTime - gpuRunTime),
-    reportHours(taskRunTime - gpuRunTime),
+    reportHours(cpuTime),
+    humanizeDuration(cpuTime),
+    costCpu,
   );
 
-  logFiltered('Training time:', ({ task }) => {
-    const { name } = task.metadata;
-    return name.startsWith('train-') || name.startsWith('finetune-');
+  table.push({
+    description: 'Total task run time:',
+    hours: reportHours(taskRunTime),
+    duration: humanizeDuration(taskRunTime),
+    cost:
+      '$' +
+      (
+        reportHours(cpuTime) * costCpu +
+        reportHours(gpuRunTime) * costNonPreemptibleGPU +
+        reportHours(gpuPreemptibleRunTime) * costPreemptibleGPU
+      ).toFixed(2),
   });
 
-  logFiltered('Translate "mono" time:', ({ task }) => {
-    const { name } = task.metadata;
-    return name.startsWith('translate-mono');
-  });
+  logFiltered(
+    'Train Backwards:',
+    ({ task }) => {
+      const { name } = task.metadata;
+      return name.startsWith('train-backwards');
+    },
+    costs.backtranslations,
+  );
 
-  logFiltered('Translate "corpus" time:', ({ task }) => {
-    const { name } = task.metadata;
-    return name.startsWith('translate-corpus');
-  });
+  logFiltered(
+    'Train Teacher:',
+    ({ task }) => {
+      const { name } = task.metadata;
+      return name.startsWith('train-teacher');
+    },
+    costs.teacher,
+  );
 
-  logFiltered('Compute alignments:', ({ task }) => {
-    const { name } = task.metadata;
-    return name.startsWith('alignments-');
-  });
+  logFiltered(
+    'Train Student:',
+    ({ task }) => {
+      const { name } = task.metadata;
+      return (
+        name.startsWith('train-student-') || name.startsWith('finetune-student')
+      );
+    },
+    costs.student,
+  );
 
-  logFiltered('Score the model:', ({ task }) => {
-    const { name } = task.metadata;
-    return name.startsWith('score-');
-  });
+  logFiltered(
+    'Translate student data (mono-src):',
+    ({ task }) => {
+      const { name } = task.metadata;
+      return name.startsWith('translate-mono-src');
+    },
+    costPreemptibleGPU,
+  );
+
+  logFiltered(
+    'Translate backtranslation (mono-trg):',
+    ({ task }) => {
+      const { name } = task.metadata;
+      return name.startsWith('translate-mono-trg');
+    },
+    costPreemptibleGPU,
+  );
+
+  logFiltered(
+    'Translate "corpus" time:',
+    ({ task }) => {
+      const { name } = task.metadata;
+      return name.startsWith('translate-corpus');
+    },
+    costPreemptibleGPU,
+  );
+
+  logFiltered(
+    'Compute alignments:',
+    ({ task }) => {
+      const { name } = task.metadata;
+      return name.startsWith('alignments-');
+    },
+    costCpu,
+  );
+
+  logFiltered(
+    'Score the model:',
+    ({ task }) => {
+      const { name } = task.metadata;
+      return name.startsWith('score-');
+    },
+    costCpu,
+  );
+
+  console.table(table);
 }
 
 /**
@@ -1196,7 +1313,7 @@ function humanizeDuration(ms) {
  * @param {number} ms
  */
 function reportHours(ms) {
-  return `(${Math.floor((ms / 1000 / 60) * 10) / 10} hrs)`;
+  return Math.floor((ms / 1000 / 60 / 60) * 10) / 10;
 }
 
 /**
