@@ -37,12 +37,12 @@ td:nth-child(1) {
   border-right: 2px solid #aaa;
 }
 
-td:nth-child(5) {
+td:nth-child(6) {
   border-left: 2px solid #aaa;
 }
 
 td:nth-child(2),
-td:nth-child(5) {
+td:nth-child(6) {
   background-color: #eee;
   font-family: monospace;
 }

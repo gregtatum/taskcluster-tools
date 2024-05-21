@@ -104,8 +104,8 @@ async function main() {
     };
     td(dn.of(lang));
 
-    addToRow(td, `${lang}-en`, toEn[0]);
-    addToRow(td, `en-${lang}`, fromEn[0]);
+    addToRow(td, `${lang}-en`, records.data, toEn[0]);
+    addToRow(td, `en-${lang}`, records.data, fromEn[0]);
     tbody.append(tr);
   }
   getById('loading').style.display = 'none';
@@ -115,9 +115,10 @@ async function main() {
 /**
  * @param {(text?: string) => void} td
  * @param {string} pair
+ * @param {ModelRecord[]} records
  * @param {ModelRecord} [model]
  */
-function addToRow(td, pair, model) {
+function addToRow(td, pair, records, model) {
   if (model) {
     td(pair);
   } else {
@@ -125,7 +126,33 @@ function addToRow(td, pair, model) {
   }
 
   td(model?.version);
+  td(getModelSize(records, model));
+
   td(getReleaseChannel(model));
+}
+
+/**
+ * @param {ModelRecord[]} records
+ * @param {ModelRecord} [model]
+ */
+function getModelSize(records, model) {
+  if (!model) {
+    return '';
+  }
+
+  let size = 0;
+  for (const record of records) {
+    if (
+      record.fromLang === model.fromLang &&
+      record.toLang === model.toLang &&
+      record.version === model.version &&
+      record.filter_expression === model.filter_expression
+    ) {
+      size += Number(record.attachment.size);
+    }
+  }
+
+  return (size / 1000 / 1000).toFixed(1) + ' MB';
 }
 
 /**
