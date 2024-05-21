@@ -203,7 +203,7 @@ function getReleaseChannel(model) {
   if (!model) {
     return '';
   }
-  let filterExpression = model.filter_expression;
+  let filterExpression = model.filter_expression ?? '';
   filterExpression = filterExpression.replace(
     "env.channel == 'default'",
     'Local Build',
