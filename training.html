@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Firefox Translations Models</title>
+</head>
+<body>
+  <script src='./src/training/training.mjs' type="module"></script>
+  <link rel="stylesheet" href="./src/training/style.css">
+  <h2>Firefox Translations Training</h2>
+  <p id="loading">Fetching the tasks from TaskCluster…</p>
+  <p id="error">Error fetching the taskcluster. See the console log.</p>
+
+  <div id="controls">
+    <div>
+      <label for="taskGroup">
+        Add a Task Group containing "Action: Train" tasks.
+      </label>
+      <input type="text" id="taskGroup" placeholder="Add a Task Group containing Action: Train">
+    </div>
+  </div>
+
+  <table class="models" id="table">
+    <thead>
+      <tr>
+        <th>TaskGroup</th>
+        <th>Model</th>
+        <th>Completed</th>
+        <th>Running</th>
+        <th>Failed</th>
+        <th>Pending</th>
+        <th>Unscheduled</th>
+      </tr>
+    </thead>
+    <tbody id="tbody">
+      <!-- dynamically generated -->
+    </tbody>
+  </table>
+</body>
+</html>

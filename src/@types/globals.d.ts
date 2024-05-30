@@ -57,6 +57,11 @@ declare interface Task {
   };
 }
 
+declare interface TaskDependents {
+  taskId: string,
+  tasks: TaskAndStatus[]
+}
+
 declare interface TaskStatus {
   taskId: string; // "ewZ4vpZbQISjhIPnU3R36g";
   provisionerId: string; // "built-in";
