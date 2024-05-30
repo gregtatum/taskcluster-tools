@@ -6,7 +6,7 @@ const elements = {
   taskGroup: /** @type {HTMLInputElement} */ (getElement('taskGroup')),
   loading: getElement('loading'),
   controls: getElement('controls'),
-  table: getElement('table'),
+  table: /** @type {HTMLTableElement} */ (getElement('table')),
   tbody: getElement('tbody'),
 };
 
@@ -178,6 +178,7 @@ function buildTable() {
  * @param {TaskAndStatus[]} tasks
  */
 async function buildTableRow(td, taskGroupId, tasks) {
+  console.log(`!!! buildTableRow`, taskGroupId);
   tasks = (await fetchTaskGroup(taskGroupId)).tasks;
   const a = document.createElement('a');
   a.innerText = taskGroupId;
@@ -195,6 +196,8 @@ async function buildTableRow(td, taskGroupId, tasks) {
   }
 
   td(langPair);
+
+  sortTable(elements.table, 1);
 
   console.log(langPair, tasks);
 
@@ -245,4 +248,56 @@ function changeLocation(urlParams) {
 
   // @ts-ignore
   window.location = newLocation;
+}
+
+/**
+ * @param {HTMLTableElement} table
+ * @param {number} columnIndex
+ */
+function sortTable(table, columnIndex, dir = 'asc') {
+  let switchCount = 0;
+  let shouldSwitch = false;
+  let switching = true;
+  while (switching) {
+    switching = false;
+    // @ts-ignore
+    const rows = table.rows;
+
+    let i;
+    for (i = 1; i < rows.length - 1; i++) {
+      shouldSwitch = false;
+
+      const x =
+        rows[i].querySelectorAll('td')[columnIndex]?.innerText.toLowerCase() ??
+        '';
+
+      const y =
+        rows[i + 1]
+          .querySelectorAll('td')
+          [columnIndex]?.innerText.toLowerCase() ?? '';
+
+      if (dir == 'asc') {
+        if (x > y) {
+          shouldSwitch = true;
+          break;
+        }
+      } else if (dir == 'desc') {
+        if (x < y) {
+          shouldSwitch = true;
+          break;
+        }
+      }
+    }
+
+    if (shouldSwitch) {
+      rows[i].parentNode?.insertBefore(rows[i + 1], rows[i]);
+      switching = true;
+      switchCount++;
+    } else {
+      if (switchCount == 0 && dir == 'asc') {
+        dir = 'desc';
+        switching = true;
+      }
+    }
+  }
 }
