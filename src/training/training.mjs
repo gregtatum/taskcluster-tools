@@ -8,6 +8,7 @@ const elements = {
   controls: getElement('controls'),
   table: /** @type {HTMLTableElement} */ (getElement('table')),
   tbody: getElement('tbody'),
+  showAll: /** @type {HTMLInputElement} */ (getElement('showAll')),
   trainTaskGroupIds: getElement('trainTaskGroupIds'),
 };
 
@@ -36,6 +37,14 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 async function main() {
+  elements.showAll.checked = getShowAll();
+  console.log(`!!! `, elements.showAll, getShowAll());
+  elements.showAll.addEventListener('click', () => {
+    const urlParams = new URLSearchParams(window.location.search);
+    urlParams.set('showAll', elements.showAll.checked.toString());
+    changeLocation(urlParams);
+  });
+
   for (const trainTaskGroupId of getTrainTaskGroupIds()) {
     const { tr, createTD } = createTableRow(elements.trainTaskGroupIds);
     createTD('Train Task Group');
@@ -180,10 +189,11 @@ function buildTable() {
       const { tr, createTD } = createTableRow(elements.tbody);
       const [firstTask] = tasks;
       if (!firstTask) {
-        // This hasn't started yet, or has failed.
-        createTD(
-          `${trainActionTask.status.taskId} ${trainActionTask.status.state}`,
-        );
+        if (getShowAll()) {
+          createTD(
+            `${trainActionTask.status.taskId} ${trainActionTask.status.state}`,
+          );
+        }
       } else {
         tr.dataset.taskGroupId = firstTask.task.taskGroupId;
         await buildTableRow(
@@ -208,10 +218,18 @@ function buildTable() {
       });
       for (const taskGroup of taskGroups.slice(1)) {
         const { taskGroupId } = taskGroup[0].task;
+        /** @type {HTMLElement | null} */
         const tr = document.querySelector(
           `tr[data-task-group-id="${taskGroupId}"]`,
         );
-        tr?.classList.add('older-taskgroup');
+        if (!tr) {
+          throw new Error('Could not find tr for task group.');
+        }
+        if (getShowAll()) {
+          tr.classList.add('older-taskgroup');
+        } else {
+          tr.style.display = 'none';
+        }
       }
     }
     taskGroupsByLangPair;
@@ -483,4 +501,14 @@ function sortTable(table, columnIndex, dir = 'asc') {
       }
     }
   }
+}
+
+/**
+ * Should the task chunks be merged?
+ *
+ * @returns {boolean}
+ */
+function getShowAll() {
+  const urlParams = new URLSearchParams(window.location.search);
+  return urlParams.get('showAll') === 'true';
 }
