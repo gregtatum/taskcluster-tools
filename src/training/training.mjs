@@ -38,34 +38,60 @@ document.addEventListener('DOMContentLoaded', () => {
 
 async function main() {
   elements.showAll.checked = getShowAll();
-  console.log(`!!! `, elements.showAll, getShowAll());
   elements.showAll.addEventListener('click', () => {
     const urlParams = new URLSearchParams(window.location.search);
     urlParams.set('showAll', elements.showAll.checked.toString());
     changeLocation(urlParams);
   });
 
-  for (const trainTaskGroupId of getTrainTaskGroupIds()) {
+  for (const [
+    taskGroupIdIndex,
+    { taskGroupId, name },
+  ] of getTrainTaskGroups().entries()) {
     const { tr, createTD } = createTableRow(elements.trainTaskGroupIds);
     createTD('Train Task Group');
     {
       const a = document.createElement('a');
-      a.innerText = trainTaskGroupId;
-      a.href = `${server}/tasks/groups/${trainTaskGroupId}`;
+      a.innerText = taskGroupId;
+      a.href = `${server}/tasks/groups/${taskGroupId}`;
       a.target = '_blank';
       createTD(a);
+    }
+    {
+      const input = document.createElement('input');
+      input.value = name;
+      input.placeholder = 'Add a name';
+      input.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter') {
+          event.preventDefault();
+          const names = getTrainTaskGroups().map(({ name }) => name);
+          names[taskGroupIdIndex] = input.value ?? '';
+
+          const urlParams = new URLSearchParams(window.location.search);
+          urlParams.set('taskGroupNames', JSON.stringify(names));
+          changeLocation(urlParams);
+        }
+      });
+      createTD(input);
     }
     {
       const button = document.createElement('button');
       button.innerText = 'remove';
       button.addEventListener('click', () => {
-        const ids = getTrainTaskGroupIds();
-
+        const ids = [];
+        const names = [];
+        for (const { taskGroupId: id, name } of getTrainTaskGroups()) {
+          if (taskGroupId !== id) {
+            ids.push(id);
+            names.push(name);
+          }
+        }
         const urlParams = new URLSearchParams(window.location.search);
         urlParams.set(
           'taskGroupIds',
-          ids.filter((id) => id !== trainTaskGroupId).join(','),
+          ids.filter((id) => id !== taskGroupId).join(','),
         );
+        urlParams.set('taskGroupNames', JSON.stringify(names));
         changeLocation(urlParams);
       });
       createTD(button);
@@ -438,6 +464,44 @@ function getTrainTaskGroupIds() {
   // Parse the taskGroupId values into an array
   const taskGroupIds = taskGroupIdParam.split(',');
   return taskGroupIds;
+}
+
+function getEmptyTrainTaskGroups() {
+  return getTrainTaskGroupIds().map((taskGroupId) => ({
+    taskGroupId,
+    name: '',
+  }));
+}
+
+/**
+ * @returns {Array<{ taskGroupId: string, name: string }>}
+ */
+function getTrainTaskGroups() {
+  const urlParams = new URLSearchParams(window.location.search);
+  // Extract the taskGroupId parameter
+  const namesString = urlParams.get('taskGroupNames');
+  const ids = getTrainTaskGroupIds();
+
+  if (!namesString) {
+    return getEmptyTrainTaskGroups();
+  }
+
+  // Parse the taskGroupId values into an array
+  let names;
+  try {
+    names = JSON.parse(namesString);
+  } catch {}
+
+  if (!Array.isArray(names)) {
+    console.error('Bad taskGroupNames');
+    return getEmptyTrainTaskGroups();
+  }
+  const namesFinal = [];
+  for (let i = 0; i < ids.length; i++) {
+    const name = typeof names[i] === 'string' ? names[i] : '';
+    namesFinal.push({ taskGroupId: ids[i], name });
+  }
+  return namesFinal;
 }
 
 /**
