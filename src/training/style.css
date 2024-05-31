@@ -9,7 +9,6 @@ body {
 }
 
 table {
-  display: none;
   border-collapse: collapse;
   border-style: hidden;
   margin-bottom: .25rem;
@@ -17,6 +16,14 @@ table {
   border-radius: 9px;
   overflow: hidden;
   box-shadow: 0 0 0 1px #666;
+}
+
+.train-tasks-table {
+
+}
+
+.models-table {
+  display: none;
 }
 
 .table-overflow {
@@ -47,11 +54,6 @@ td, th {
   display: none;
 }
 
-td:nth-child(1) {
-  font-weight: bold;
-  border-right: 2px solid #aaa;
-}
-
 td:nth-child(2) {
   background-color: #eee;
   font-family: monospace;
@@ -67,4 +69,9 @@ td:nth-child(2) {
 .older-taskgroup {
   background: #ddd;
   opacity: 0.5;
+
+  & td {
+    background: transparent !important;
+    color: #000 !important;
+  }
 }

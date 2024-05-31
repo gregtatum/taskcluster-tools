@@ -8,6 +8,7 @@ const elements = {
   controls: getElement('controls'),
   table: /** @type {HTMLTableElement} */ (getElement('table')),
   tbody: getElement('tbody'),
+  trainTaskGroupIds: getElement('trainTaskGroupIds'),
 };
 
 /** @type {Array<TaskGroup>} */
@@ -35,7 +36,33 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 async function main() {
-  elements.taskGroup.value = getTaskGroupIds().join(',');
+  for (const trainTaskGroupId of getTrainTaskGroupIds()) {
+    const { tr, createTD } = createTableRow(elements.trainTaskGroupIds);
+    createTD('Train Task Group');
+    {
+      const a = document.createElement('a');
+      a.innerText = trainTaskGroupId;
+      a.href = `${server}/tasks/groups/${trainTaskGroupId}`;
+      a.target = '_blank';
+      createTD(a);
+    }
+    {
+      const button = document.createElement('button');
+      button.innerText = 'remove';
+      button.addEventListener('click', () => {
+        const ids = getTrainTaskGroupIds();
+
+        const urlParams = new URLSearchParams(window.location.search);
+        urlParams.set(
+          'taskGroupIds',
+          ids.filter((id) => id !== trainTaskGroupId).join(','),
+        );
+        changeLocation(urlParams);
+      });
+      createTD(button);
+    }
+    elements.trainTaskGroupIds.appendChild(tr);
+  }
   elements.taskGroup.addEventListener('keydown', (event) => {
     const taskGroupId =
       /** @type {HTMLInputElement } */ elements.taskGroup.value;
@@ -44,7 +71,7 @@ async function main() {
         alert('The task group id was not valid');
         return;
       }
-      const ids = getTaskGroupIds();
+      const ids = getTrainTaskGroupIds();
       ids.push(taskGroupId);
 
       const urlParams = new URLSearchParams(window.location.search);
@@ -102,9 +129,12 @@ async function fetchDependents(taskId) {
   return await response.json();
 }
 
-function createTableRow() {
+/**
+ * @param {HTMLElement} tbody
+ */
+function createTableRow(tbody) {
   const tr = document.createElement('tr');
-  elements.tbody.appendChild(tr);
+  tbody.appendChild(tr);
 
   return {
     tr,
@@ -129,41 +159,46 @@ function buildTable() {
   /** @type {Map<string, Array<TaskAndStatus[]>>} */
   const taskGroupsByLangPair = new Map();
 
-  const fetchPromises = getTaskGroupIds().map(async (trainTaskGroupId) => {
+  const fetchPromises = getTrainTaskGroupIds().map(async (trainTaskGroupId) => {
     const listUrl = `${server}/api/queue/v1/task-group/${trainTaskGroupId}/list`;
 
     console.log('Fetching Task Group:', listUrl);
     const actionTaskGroup = await fetchTaskGroup(trainTaskGroupId);
     console.log('Action task group', actionTaskGroup);
 
-    // Go through all of the train actions.
-    return Promise.allSettled(
-      actionTaskGroup.tasks.map(({ task, status }) => {
-        if (task.metadata.name !== 'Action: Train') {
-          return;
-        }
-
-        return fetchDependents(status.taskId).then(async ({ tasks }) => {
-          const { tr, createTD } = createTableRow();
-          const [firstTask] = tasks;
-          if (!firstTask) {
-            // This hasn't started yet, or has failed.
-            createTD(`${status.taskId} ${status.state}`);
-          } else {
-            tr.dataset.taskGroupId = firstTask.task.taskGroupId;
-            await buildTableRow(
-              createTD,
-              firstTask.task.taskGroupId,
-              taskGroupsByLangPair,
-            );
-          }
-        });
-      }),
+    const trainTasks = actionTaskGroup.tasks.filter(
+      ({ task }) => task.metadata.name === 'Action: Train',
     );
+
+    console.log('trainTasks', trainTasks);
+    // @ts-ignore
+    window.trainTasks = trainTasks;
+
+    // Go through all of the train actions.
+    const promises = trainTasks.map(async (trainActionTask) => {
+      const { tasks } = await fetchDependents(trainActionTask.status.taskId);
+      const { tr, createTD } = createTableRow(elements.tbody);
+      const [firstTask] = tasks;
+      if (!firstTask) {
+        // This hasn't started yet, or has failed.
+        createTD(
+          `${trainActionTask.status.taskId} ${trainActionTask.status.state}`,
+        );
+      } else {
+        tr.dataset.taskGroupId = firstTask.task.taskGroupId;
+        await buildTableRow(
+          createTD,
+          firstTask.task.taskGroupId,
+          taskGroupsByLangPair,
+          trainActionTask,
+        );
+      }
+    });
+
+    return Promise.allSettled(promises);
   });
 
   Promise.allSettled(fetchPromises).then(() => {
-    console.log(`!!! All settled`, taskGroupsByLangPair);
     for (const taskGroups of taskGroupsByLangPair.values()) {
       // Sort newest to oldest
       taskGroups.sort((aList, bList) => {
@@ -171,10 +206,8 @@ function buildTable() {
         const b = bList[0].task.created;
         return a < b ? 1 : a > b ? -1 : 0;
       });
-      console.log(`!!! sorted`, taskGroups);
       for (const taskGroup of taskGroups.slice(1)) {
         const { taskGroupId } = taskGroup[0].task;
-        console.log(`!!! select`, `tr[data-task-group-id="${taskGroupId}"]`);
         const tr = document.querySelector(
           `tr[data-task-group-id="${taskGroupId}"]`,
         );
@@ -196,8 +229,14 @@ function buildTable() {
  * @param {(text: string | Element) => HTMLTableCellElement} createTD
  * @param {string} taskGroupId
  * @param {Map<string, Array<TaskAndStatus[]>>} taskGroupsByLangPair
+ * @param {TaskAndStatus} trainActionTask
  */
-async function buildTableRow(createTD, taskGroupId, taskGroupsByLangPair) {
+async function buildTableRow(
+  createTD,
+  taskGroupId,
+  taskGroupsByLangPair,
+  trainActionTask,
+) {
   const tasks = (await fetchTaskGroup(taskGroupId)).tasks;
   const taskGroupUrl = `${server}/tasks/groups/${taskGroupId}`;
 
@@ -206,6 +245,7 @@ async function buildTableRow(createTD, taskGroupId, taskGroupsByLangPair) {
     const a = document.createElement('a');
     a.innerText = taskGroupId;
     a.href = taskGroupUrl;
+    a.target = '_blank';
     createTD(a);
   }
 
@@ -229,7 +269,16 @@ async function buildTableRow(createTD, taskGroupId, taskGroupsByLangPair) {
     list.push(tasks);
   }
 
-  createTD(langPair);
+  {
+    const button = document.createElement('button');
+    button.innerHTML = 'config';
+    button.addEventListener(
+      'click',
+      copyConfigHandler(button, trainActionTask),
+    );
+    const td = createTD(langPair + ' ');
+    td.appendChild(button);
+  }
 
   console.log(langPair, tasks);
 
@@ -281,6 +330,7 @@ async function buildTableRow(createTD, taskGroupId, taskGroupsByLangPair) {
     const a = document.createElement('a');
     a.innerText = String(stateCounts[status] ?? 0);
     a.href = taskGroupUrl;
+    a.target = '_blank';
     const el = createTD(a);
     if (color && stateCounts[status]) {
       el.style.background = color;
@@ -318,7 +368,45 @@ async function buildTableRow(createTD, taskGroupId, taskGroupsByLangPair) {
   sortTable(elements.table, 1);
 }
 
-function getTaskGroupIds() {
+/**
+ * @param {HTMLButtonElement} button
+ * @param {TaskAndStatus} trainActionTask
+ */
+function copyConfigHandler(button, trainActionTask) {
+  return async () => {
+    try {
+      button.innerText = 'downloading...';
+      button.disabled = true;
+      const { taskId } = trainActionTask.status;
+      const artifactPath = 'public/parameters.yml';
+      const taskUrl = `${server}/api/queue/v1/task/${taskId}/artifacts/${artifactPath}`;
+      const response = await fetch(taskUrl);
+      const configText = await response.text();
+
+      // Extract the config
+      const parts = configText.split('\ntraining_config:\n');
+
+      // Collect all the lines of the same indent level
+      let finalConfig = '';
+      for (const line of parts[1].split('\n')) {
+        if (line.startsWith('  ')) {
+          finalConfig += line.slice(2) + '\n';
+        } else {
+          break;
+        }
+      }
+
+      await navigator.clipboard.writeText(finalConfig);
+
+      button.innerText = 'config copied';
+      button.disabled = false;
+    } catch (error) {
+      alert('Failed to get the training config');
+    }
+  };
+}
+
+function getTrainTaskGroupIds() {
   const urlParams = new URLSearchParams(window.location.search);
   // Extract the taskGroupId parameter
   const taskGroupIdParam = urlParams.get('taskGroupIds');

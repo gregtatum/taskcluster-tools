@@ -12,16 +12,28 @@
   <p id="error">Error fetching the taskcluster. See the console log.</p>
 
   <div id="controls">
-    <div>
-      <label for="taskGroup">
-        Add a Task Group containing "Action: Train" tasks.
-      </label>
-      <input type="text" id="taskGroup" placeholder="Add a Task Group containing Action: Train">
-    </div>
+    <table class="train-tasks-table">
+      <tbody id="trainTaskGroupIds">
+        <tr>
+          <td>
+            <label for="taskGroup">
+              Add a Train Task Group
+            </label>
+            <div style="font-weight: normal; margin-top: 7px;">
+              (must contain train actions)
+            </div>
+          </td>
+          <td colspan="2">
+            <input type="text" id="taskGroup" placeholder="Task Group ID">
+          </td>
+        </tr>
+        <!-- dynamically generated -->
+      </tbody>
+    </table>
   </div>
 
   <div class="table-overflow">
-    <table class="models" id="table">
+    <table class="models-table" id="table">
       <thead>
         <tr>
           <th>TaskGroup</th>
