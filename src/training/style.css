@@ -19,6 +19,12 @@ table {
   box-shadow: 0 0 0 1px #666;
 }
 
+.table-overflow {
+  max-width: 100%;
+  padding: 1px;
+  overflow-x: auto;
+}
+
 th {
   background-color: #aaa;
 }
@@ -26,6 +32,15 @@ th {
 td, th {
   border: 0.9px solid #c6c6c6;
   padding: 0.45rem 0.85rem;
+  text-wrap: nowrap;
+
+  & span {
+    background-color: #eee;
+    padding: 3px 6px;
+    display: inline-block;
+    margin: -3px 0 -3px 10px;
+    border-radius: 3px;
+  }
 }
 
 #error {

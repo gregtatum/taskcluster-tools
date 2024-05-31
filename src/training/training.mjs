@@ -178,11 +178,11 @@ function buildTable() {
  * @param {TaskAndStatus[]} tasks
  */
 async function buildTableRow(td, taskGroupId, tasks) {
-  console.log(`!!! buildTableRow`, taskGroupId);
   tasks = (await fetchTaskGroup(taskGroupId)).tasks;
   const a = document.createElement('a');
   a.innerText = taskGroupId;
-  a.href = `${server}/tasks/groups/${taskGroupId}`;
+  const taskGroupUrl = `${server}/tasks/groups/${taskGroupId}`;
+  a.href = taskGroupUrl;
   td(a);
 
   // Attempt to find a langpair
@@ -201,26 +201,86 @@ async function buildTableRow(td, taskGroupId, tasks) {
 
   console.log(langPair, tasks);
 
-  /** @type {Record<string, number>} */
-  const statusCounts = {};
+  /** @type {Record<TaskState, number>} */
+  const stateCounts = {
+    completed: 0,
+    running: 0,
+    failed: 0,
+    exception: 0,
+    pending: 0,
+    unscheduled: 0,
+  };
 
-  for (const { status } of tasks) {
-    const count = statusCounts[status.state] ?? 0;
-    statusCounts[status.state] = count + 1;
+  /** @type {Record<string, "not-started" | "running" | "completed">} */
+  const heavyStepsCompleted = {
+    'translate-mono-': 'not-started',
+    'bicleaner-ai-': 'not-started',
+    'train-backwards-': 'not-started',
+    'train-teacher-': 'not-started',
+    'train-student-': 'not-started',
+    'finetune-student-': 'not-started',
+  };
+
+  for (const { status, task } of tasks) {
+    // Compute the status counts
+    const count = stateCounts[status.state];
+    stateCounts[status.state] = count + 1;
+
+    // Compute if a heavy step was completed.
+    for (const taskNamePrefix of Object.keys(heavyStepsCompleted)) {
+      if (task.metadata.name.startsWith(taskNamePrefix)) {
+        if (status.state === 'completed') {
+          if (heavyStepsCompleted[taskNamePrefix] === 'not-started') {
+            heavyStepsCompleted[taskNamePrefix] = 'completed';
+          }
+        } else if (status.state === 'running') {
+          heavyStepsCompleted[taskNamePrefix] = 'running';
+        }
+      }
+    }
   }
 
-  const failed = (statusCounts.failed ?? 0) + (statusCounts.exception ?? 0);
+  /**
+   * @param {TaskState} status
+   * @param {string} [color]
+   * @param {string} [stage]
+   */
+  const addStateCount = (status, color, stage) => {
+    const a = document.createElement('a');
+    a.innerText = String(stateCounts[status] ?? 0);
+    a.href = taskGroupUrl;
+    const el = td(a);
+    if (color && stateCounts[status]) {
+      el.style.background = color;
+      a.style.color = '#fff';
+    }
+    if (stage) {
+      const span = document.createElement('span');
+      span.innerText = ' ' + stage;
+      el.appendChild(span);
+    }
+  };
 
-  td(String(statusCounts.completed ?? 0));
-  td(String(statusCounts.running ?? 0));
-  const failedEl = td(String(failed));
-  td(String(statusCounts.pending ?? 0));
-  td(String(statusCounts.unscheduled ?? 0));
-
-  if (failed) {
-    failedEl.style.background = 'red';
-    failedEl.style.color = '#fff';
+  let completed = '';
+  let running = '';
+  for (const [step, state] of Object.entries(heavyStepsCompleted)) {
+    if (state === 'completed') {
+      completed = step;
+    }
+    if (state === 'running') {
+      running = step;
+    }
   }
+  // Take off the last "-"
+  completed = completed.slice(0, completed.length - 1);
+  running = running.slice(0, running.length - 1);
+
+  addStateCount('completed', undefined, completed);
+  addStateCount('running', undefined, running);
+  addStateCount('failed', '#f44336');
+  addStateCount('exception', '#ffa000');
+  addStateCount('pending');
+  addStateCount('unscheduled');
 }
 
 function getTaskGroupIds() {

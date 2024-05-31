@@ -1,6 +1,6 @@
 declare interface Run {
   runId: 0;
-  state: string; // "completed";
+  state: TaskState; // "completed";
   reasonCreated: string; // "scheduled";
   reasonResolved: string; // "completed";
   workerGroup: string; // "built-in";
@@ -73,7 +73,7 @@ declare interface TaskStatus {
   deadline: string; // "2023-09-24T18:58:07.341Z";
   expires: string; // "2023-10-17T18:58:07.341Z";
   retriesLeft: number;
-  state: string; // "completed";
+  state: TaskState; // "completed";
   runs?: Run[];
 }
 
@@ -209,3 +209,11 @@ interface ModelRecord {
  // See: https://remote-settings.readthedocs.io/en/latest/target-filters.html#filter-expressions
  filter_expression: string;
 }
+
+declare type TaskState =
+  | "completed"
+  | "running"
+  | "failed"
+  | "exception"
+  | "pending"
+  | "unscheduled"
