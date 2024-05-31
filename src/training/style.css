@@ -63,3 +63,8 @@ td:nth-child(2) {
     width: 200px;
   }
 }
+
+.older-taskgroup {
+  background: #ddd;
+  opacity: 0.5;
+}

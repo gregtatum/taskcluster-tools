@@ -16,12 +16,6 @@ const taskGroups = [];
 window.taskGroups = taskGroups;
 console.log('window.taskGroups', taskGroups);
 
-/** @type {Array<TaskGroup>} */
-const actionTaskGroups = [];
-// @ts-ignore
-window.actionTaskGroups = actionTaskGroups;
-console.log('window.actionTaskGroups', actionTaskGroups);
-
 /**
  * @param {string} id
  */
@@ -108,82 +102,112 @@ async function fetchDependents(taskId) {
   return await response.json();
 }
 
+function createTableRow() {
+  const tr = document.createElement('tr');
+  elements.tbody.appendChild(tr);
+
+  return {
+    tr,
+    /**
+     * @param {string | Element} [textOrEl]
+     * @returns {HTMLTableCellElement}
+     */
+    createTD(textOrEl = '') {
+      const el = document.createElement('td');
+      if (typeof textOrEl === 'string') {
+        el.innerText = textOrEl;
+      } else {
+        el.appendChild(textOrEl);
+      }
+      tr.appendChild(el);
+      return el;
+    },
+  };
+}
+
 function buildTable() {
-  for (const taskGroupId of getTaskGroupIds()) {
-    const listUrl = `${server}/api/queue/v1/task-group/${taskGroupId}/list`;
+  /** @type {Map<string, Array<TaskAndStatus[]>>} */
+  const taskGroupsByLangPair = new Map();
+
+  const fetchPromises = getTaskGroupIds().map(async (trainTaskGroupId) => {
+    const listUrl = `${server}/api/queue/v1/task-group/${trainTaskGroupId}/list`;
 
     console.log('Fetching Task Group:', listUrl);
-    fetchTaskGroup(taskGroupId).then(
-      async (actionTaskGroup) => {
-        actionTaskGroups.push(actionTaskGroup);
-        console.log('Action task group', actionTaskGroup);
+    const actionTaskGroup = await fetchTaskGroup(trainTaskGroupId);
+    console.log('Action task group', actionTaskGroup);
 
-        // Go through all of the train actions.
-        for (const { task, status } of actionTaskGroup.tasks) {
-          if (task.metadata.name !== 'Action: Train') {
-            continue;
-          }
-
-          const tr = document.createElement('tr');
-
-          /**
-           * @param {string | Element} [textOrEl]
-           * @returns {HTMLTableCellElement}
-           */
-          const td = (textOrEl = '') => {
-            const el = document.createElement('td');
-            if (typeof textOrEl === 'string') {
-              el.innerText = textOrEl;
-            } else {
-              el.appendChild(textOrEl);
-            }
-            tr.appendChild(el);
-            return el;
-          };
-
-          // const [dependency] = task.dependencies;
-          // if (!dependency) {
-          //   console.log('Train action had no dependencies yet.', task, status);
-          //   td(`No tasks: ${status.taskId} ${status.state}`);
-          //   continue;
-          // }
-
-          const actionTaskId = status.taskId;
-          fetchDependents(actionTaskId).then(({ tasks }) => {
-            const [firstTask] = tasks;
-            if (!firstTask) {
-              td(`${status.taskId} ${status.state}`);
-            } else {
-              // taskGroups.push(tasks);
-              buildTableRow(td, firstTask.task.taskGroupId, tasks);
-            }
-
-            elements.tbody.appendChild(tr);
-          });
+    // Go through all of the train actions.
+    return Promise.allSettled(
+      actionTaskGroup.tasks.map(({ task, status }) => {
+        if (task.metadata.name !== 'Action: Train') {
+          return;
         }
-      },
-      () => {
-        console.error('Could not fetch task.', taskGroupId);
-      },
+
+        return fetchDependents(status.taskId).then(async ({ tasks }) => {
+          const { tr, createTD } = createTableRow();
+          const [firstTask] = tasks;
+          if (!firstTask) {
+            // This hasn't started yet, or has failed.
+            createTD(`${status.taskId} ${status.state}`);
+          } else {
+            tr.dataset.taskGroupId = firstTask.task.taskGroupId;
+            await buildTableRow(
+              createTD,
+              firstTask.task.taskGroupId,
+              taskGroupsByLangPair,
+            );
+          }
+        });
+      }),
     );
-  }
+  });
+
+  Promise.allSettled(fetchPromises).then(() => {
+    console.log(`!!! All settled`, taskGroupsByLangPair);
+    for (const taskGroups of taskGroupsByLangPair.values()) {
+      // Sort newest to oldest
+      taskGroups.sort((aList, bList) => {
+        const a = aList[0].task.created;
+        const b = bList[0].task.created;
+        return a < b ? 1 : a > b ? -1 : 0;
+      });
+      console.log(`!!! sorted`, taskGroups);
+      for (const taskGroup of taskGroups.slice(1)) {
+        const { taskGroupId } = taskGroup[0].task;
+        console.log(`!!! select`, `tr[data-task-group-id="${taskGroupId}"]`);
+        const tr = document.querySelector(
+          `tr[data-task-group-id="${taskGroupId}"]`,
+        );
+        tr?.classList.add('older-taskgroup');
+      }
+    }
+    taskGroupsByLangPair;
+
+    // @ts-ignore
+    window.taskGroupsByLangPair = taskGroupsByLangPair;
+    console.log('taskGroupsByLangPair', taskGroupsByLangPair);
+  });
 
   elements.loading.style.display = 'none';
   elements.table.style.display = 'table';
 }
 
 /**
- * @param {(text: string | Element) => HTMLTableCellElement} td
+ * @param {(text: string | Element) => HTMLTableCellElement} createTD
  * @param {string} taskGroupId
- * @param {TaskAndStatus[]} tasks
+ * @param {Map<string, Array<TaskAndStatus[]>>} taskGroupsByLangPair
  */
-async function buildTableRow(td, taskGroupId, tasks) {
-  tasks = (await fetchTaskGroup(taskGroupId)).tasks;
-  const a = document.createElement('a');
-  a.innerText = taskGroupId;
+async function buildTableRow(createTD, taskGroupId, taskGroupsByLangPair) {
+  const tasks = (await fetchTaskGroup(taskGroupId)).tasks;
   const taskGroupUrl = `${server}/tasks/groups/${taskGroupId}`;
-  a.href = taskGroupUrl;
-  td(a);
+
+  {
+    // Build the task group ID link
+    const a = document.createElement('a');
+    a.innerText = taskGroupId;
+    a.href = taskGroupUrl;
+    createTD(a);
+  }
 
   // Attempt to find a langpair
   let langPair = '';
@@ -195,9 +219,17 @@ async function buildTableRow(td, taskGroupId, tasks) {
     }
   }
 
-  td(langPair);
+  {
+    // Keep track of this list.
+    let list = taskGroupsByLangPair.get(langPair);
+    if (!list) {
+      list = [];
+      taskGroupsByLangPair.set(langPair, list);
+    }
+    list.push(tasks);
+  }
 
-  sortTable(elements.table, 1);
+  createTD(langPair);
 
   console.log(langPair, tasks);
 
@@ -249,7 +281,7 @@ async function buildTableRow(td, taskGroupId, tasks) {
     const a = document.createElement('a');
     a.innerText = String(stateCounts[status] ?? 0);
     a.href = taskGroupUrl;
-    const el = td(a);
+    const el = createTD(a);
     if (color && stateCounts[status]) {
       el.style.background = color;
       a.style.color = '#fff';
@@ -281,6 +313,9 @@ async function buildTableRow(td, taskGroupId, tasks) {
   addStateCount('exception', '#ffa000');
   addStateCount('pending');
   addStateCount('unscheduled');
+
+  // Sort by langpair.
+  sortTable(elements.table, 1);
 }
 
 function getTaskGroupIds() {
