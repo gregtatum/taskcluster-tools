@@ -371,6 +371,7 @@ async function buildTableRow(
     'translate-mono-': 'not-started',
     'bicleaner-ai-': 'not-started',
     'train-backwards-': 'not-started',
+    'alignments-backtranslated-': 'not-started',
     'train-teacher-': 'not-started',
     'train-student-': 'not-started',
     'finetune-student-': 'not-started',
@@ -396,17 +397,21 @@ async function buildTableRow(
   }
 
   /**
-   * @param {TaskState} status
+   * @param {TaskState} state
    * @param {string} [color]
    * @param {string} [stage]
    */
-  const addStateCount = (status, color, stage) => {
+  const addStateCount = (state, color, stage) => {
     const a = document.createElement('a');
-    a.innerText = String(stateCounts[status] ?? 0);
-    a.href = taskGroupUrl;
+    a.innerText = String(stateCounts[state] ?? 0);
     a.target = '_blank';
+    a.href = taskGroupUrl;
+    const matchingTasks = tasks.filter((task) => task.status.state === state);
+    if (matchingTasks.length === 1) {
+      a.href = `${server}/tasks/${matchingTasks[0].status.taskId}`;
+    }
     const el = createTD(a);
-    if (color && stateCounts[status]) {
+    if (color && stateCounts[state]) {
       el.style.background = color;
       a.style.color = '#fff';
     }
