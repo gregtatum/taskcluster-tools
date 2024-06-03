@@ -345,7 +345,12 @@ async function buildTableRow(
       'click',
       copyConfigHandler(button, trainActionTask),
     );
-    const td = createTD(langPair + ' ');
+    const a = document.createElement('a');
+    a.innerText = langPair;
+    a.href = `https://wandb.ai/moz-translations/${langPair}/overview`;
+    a.target = '_blank';
+    const td = createTD(a);
+    td.appendChild(document.createTextNode(' '));
     td.appendChild(button);
   }
 
