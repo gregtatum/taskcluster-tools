@@ -75,3 +75,13 @@ td:nth-child(2) {
     color: #000 !important;
   }
 }
+
+.taskGroupCell {
+  display: flex;
+  & a {
+    flex: 1;
+  }
+  & button {
+    margin-inline-start: 6px;
+  }
+}

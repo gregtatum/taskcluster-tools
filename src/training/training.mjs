@@ -209,25 +209,34 @@ function buildTable() {
     // @ts-ignore
     window.trainTasks = trainTasks;
 
+    const hidden = getHiddenTaskGroups();
+    const showAll = getShowAll();
+
     // Go through all of the train actions.
     const promises = trainTasks.map(async (trainActionTask) => {
       const { tasks } = await fetchDependents(trainActionTask.status.taskId);
-      const { tr, createTD } = createTableRow(elements.tbody);
       const [firstTask] = tasks;
       if (!firstTask) {
+        const { createTD } = createTableRow(elements.tbody);
         if (getShowAll()) {
           createTD(
             `${trainActionTask.status.taskId} ${trainActionTask.status.state}`,
           );
         }
       } else {
-        tr.dataset.taskGroupId = firstTask.task.taskGroupId;
-        await buildTableRow(
-          createTD,
-          firstTask.task.taskGroupId,
-          taskGroupsByLangPair,
-          trainActionTask,
-        );
+        const isHidden = hidden.includes(firstTask.task.taskGroupId);
+        if (showAll || !isHidden) {
+          const { tr, createTD } = createTableRow(elements.tbody);
+
+          tr.dataset.taskGroupId = firstTask.task.taskGroupId;
+          await buildTableRow(
+            createTD,
+            firstTask.task.taskGroupId,
+            taskGroupsByLangPair,
+            trainActionTask,
+            isHidden,
+          );
+        }
       }
     });
 
@@ -274,23 +283,39 @@ function buildTable() {
  * @param {string} taskGroupId
  * @param {Map<string, Array<TaskAndStatus[]>>} taskGroupsByLangPair
  * @param {TaskAndStatus} trainActionTask
+ * @param {boolean} isHidden
  */
 async function buildTableRow(
   createTD,
   taskGroupId,
   taskGroupsByLangPair,
   trainActionTask,
+  isHidden,
 ) {
   const tasks = (await fetchTaskGroup(taskGroupId)).tasks;
   const taskGroupUrl = `${server}/tasks/groups/${taskGroupId}`;
 
   {
     // Build the task group ID link
+
+    const div = document.createElement('div');
+    div.className = 'taskGroupCell';
+
     const a = document.createElement('a');
     a.innerText = taskGroupId;
     a.href = taskGroupUrl;
     a.target = '_blank';
-    createTD(a);
+    div.appendChild(a);
+
+    const button = document.createElement('button');
+    button.innerText = isHidden ? 'Show' : 'Hide';
+    button.addEventListener(
+      'click',
+      toggleHiddenHandler(taskGroupId, isHidden),
+    );
+    div.appendChild(button);
+
+    createTD(div);
   }
 
   // Attempt to find a langpair
@@ -410,6 +435,37 @@ async function buildTableRow(
 
   // Sort by langpair.
   sortTable(elements.table, 1);
+}
+
+/**
+ * Hide or show a task group after a click.
+ *
+ * @param {string} taskGroupId
+ * @param {boolean} isHidden
+ * @returns {() => void}
+ */
+function toggleHiddenHandler(taskGroupId, isHidden) {
+  return () => {
+    let hidden = getHiddenTaskGroups();
+    if (isHidden) {
+      hidden = hidden.filter((id) => id !== taskGroupId);
+    } else {
+      hidden.push(taskGroupId);
+    }
+    const urlParams = new URLSearchParams(window.location.search);
+    urlParams.set('hidden', hidden.join(','));
+    changeLocation(urlParams);
+  };
+}
+
+function getHiddenTaskGroups() {
+  const urlParams = new URLSearchParams(window.location.search);
+  const hiddenParam = urlParams.get('hidden');
+  // e.g. "PuI6mYZPTUqAfyZMTgeUng,S5E71GihQM6Te_KdrUmATw"
+  if (!hiddenParam) {
+    return [];
+  }
+  return hiddenParam.split(',');
 }
 
 /**
