@@ -68,12 +68,7 @@ td:nth-child(2) {
 
 .older-taskgroup {
   background: #ddd;
-  opacity: 0.5;
-
-  & td {
-    background: transparent !important;
-    color: #000 !important;
-  }
+  opacity: 0.75;
 }
 
 .taskGroupCell {

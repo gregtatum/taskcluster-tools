@@ -286,34 +286,41 @@ function buildTable() {
  * @prop {Date} created
  */
 
-/** @type {Array<ScoreDetails>} */
-const teacherScores = [];
+/** @type {Record<string, Array<ScoreDetails>>} */
+const scores = {
+  teacher1: [],
+  teacher2: [],
+  teacherensemble: [],
+  student: [],
+  studentquantized: [],
+};
 
 function updateScores() {
   if (getShowAll()) {
     // Do not update all of the scores if the scores are hidden.
     return;
   }
+  for (const [name, scoresList] of Object.entries(scores)) {
+    /** @type {Map<string, ScoreDetails>} */
+    const latestScores = new Map();
 
-  /** @type {Map<string, ScoreDetails>} */
-  const latestScores = new Map();
-
-  for (const scoreDetails of teacherScores) {
-    const latestScoreDetails = latestScores.get(scoreDetails.langPair);
-    if (
-      !latestScoreDetails ||
-      latestScoreDetails.created < scoreDetails.created
-    ) {
-      latestScores.set(scoreDetails.langPair, scoreDetails);
+    for (const scoreDetails of scoresList) {
+      const latestScoreDetails = latestScores.get(scoreDetails.langPair);
+      if (
+        !latestScoreDetails ||
+        latestScoreDetails.created < scoreDetails.created
+      ) {
+        latestScores.set(scoreDetails.langPair, scoreDetails);
+      }
     }
-  }
 
-  for (const { langPair, score } of latestScores.values()) {
-    for (const element of Array.from(
-      document.querySelectorAll(`[data-teacher-lang-pair=${langPair}]`),
-    )) {
-      const td = /** @type {HTMLTableCellElement} */ (element);
-      updateCometTD(td, langPair, score);
+    for (const { langPair, score } of latestScores.values()) {
+      for (const element of Array.from(
+        document.querySelectorAll(`[data-${name}=${langPair}]`),
+      )) {
+        const td = /** @type {HTMLTableCellElement} */ (element);
+        updateCometTD(td, langPair, score);
+      }
     }
   }
 }
@@ -425,35 +432,56 @@ async function buildTableRow(
     td.appendChild(button);
   }
 
-  {
-    const evalTeacher = tasks.find(
+  const evals = [
+    {
+      name: 'teacher1',
+      match: /^evaluate-teacher-flores-devtest-[a-z]{2,3}-[a-z]{2,3}-1$/,
+    },
+    {
+      name: 'teacher2',
+      match: /^evaluate-teacher-flores-devtest-[a-z]{2,3}-[a-z]{2,3}-2/,
+    },
+    {
+      name: 'teacherensemble',
+      match: /^evaluate-teacher-ensemble-flores-devtest-[a-z]{2,3}-[a-z]{2,3}$/,
+    },
+    {
+      name: 'student',
+      match: /^evaluate-student-flores-dev-[a-z]{2,3}-[a-z]{2,3}$/,
+    },
+    {
+      name: 'studentquantized',
+      match: /^evaluate-finetuned-student-flores-dev-[a-z]{2,3}-[a-z]{2,3}$ }/,
+    },
+  ];
+
+  for (const { name, match } of evals) {
+    const scoreList = scores[name];
+    const task = tasks.find(
       (t) =>
-        t.task.metadata.name.startsWith('evaluate-teacher-flores-devtest-') &&
-        t.status.state === 'completed',
+        t.task.metadata.name.match(match) && t.status.state === 'completed',
     );
 
-    let td = createTD('None');
-    if (evalTeacher) {
+    let td = createTD('');
+    if (task) {
       // If there is an eval teacher, pull its score, and update all of the other TDs,
       // as the task may have failed or be outdated, but its score is still valid.
       td.innerText = '';
-      fetchArtifact(
-        evalTeacher.status.taskId,
-        'public/build/devtest.metrics.json',
-      )
+      fetchArtifact(task.status.taskId, 'public/build/devtest.metrics.json')
         .then((response) => response.json())
         .then((metrics) => {
           const score = metrics?.comet?.score;
-          teacherScores.push({
+          scoreList.push({
             langPair,
             score,
-            created: new Date(evalTeacher.task.created),
+            created: new Date(task.task.created),
           });
           updateCometTD(td, langPair, score);
           updateScores();
         });
     }
-    td.dataset.teacherLangPair = langPair;
+
+    td.setAttribute(`data-${name}`, langPair);
   }
 
   console.log(langPair, tasks);
