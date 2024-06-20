@@ -42,7 +42,7 @@ td, th {
   text-wrap: nowrap;
 
   & span {
-    background-color: #eee;
+    background-color: #ccc;
     padding: 3px 6px;
     display: inline-block;
     margin: -3px 0 -3px 10px;
@@ -54,10 +54,26 @@ td, th {
   display: none;
 }
 
+/* Model name */
 td:nth-child(2) {
   background-color: #eee;
   font-family: monospace;
+  border-right: 2px solid #bebebe;
 }
+
+/* What is running */
+td:nth-child(8) {
+  border-left: 2px solid #bebebe;
+}
+td:nth-child(8),
+td:nth-child(9),
+td:nth-child(10),
+td:nth-child(11),
+td:nth-child(12),
+td:nth-child(13) {
+  background: #eee;
+}
+
 
 #controls {
   margin: 1em;
