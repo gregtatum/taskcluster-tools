@@ -284,6 +284,7 @@ function buildTable() {
  * @prop {string} langPair
  * @prop {number} score
  * @prop {Date} created
+ * @prop {string} taskId
  */
 
 /** @type {Record<string, Array<ScoreDetails>>} */
@@ -314,12 +315,12 @@ function updateScores() {
       }
     }
 
-    for (const { langPair, score } of latestScores.values()) {
+    for (const { langPair, score, taskId } of latestScores.values()) {
       for (const element of Array.from(
         document.querySelectorAll(`[data-${name}=${langPair}]`),
       )) {
         const td = /** @type {HTMLTableCellElement} */ (element);
-        updateCometTD(td, langPair, score);
+        updateCometTD(td, langPair, score, taskId);
       }
     }
   }
@@ -329,12 +330,16 @@ function updateScores() {
  * @param {HTMLTableCellElement} td
  * @param {string} langPair
  * @param {number} score
+ * @param {string} taskId
  */
-function updateCometTD(td, langPair, score) {
+function updateCometTD(td, langPair, score, taskId) {
   const googleScore = googleComet[langPair] ?? 0;
   const percentage = 100 * (1 - googleScore / score);
   const sign = percentage >= 0 ? '+' : '';
   const percentageDisplay = `${sign}${percentage.toFixed(2)}%`;
+  while (td.lastChild) {
+    td.removeChild(td.lastChild);
+  }
 
   let shippable = 'Shippable';
   td.style.color = '#fff';
@@ -345,7 +350,21 @@ function updateCometTD(td, langPair, score) {
     shippable = 'Not shippable';
   }
 
-  td.innerText = `${score} (${percentageDisplay})`;
+  {
+    const a = document.createElement('a');
+    a.href = `https://firefox-ci-tc.services.mozilla.com/tasks/${taskId}`;
+    a.innerText = `${score}`;
+    a.style.color = '#fff';
+    a.target = '_blank';
+    td.appendChild(a);
+  }
+  {
+    const span = document.createElement('span');
+    span.innerText = percentageDisplay;
+    span.style.color = '#000';
+    td.appendChild(span);
+  }
+
   td.title =
     `${shippable} - COMET ${score} ` +
     `vs Google Comet ${googleScore.toFixed(4)} ` +
@@ -467,7 +486,8 @@ async function buildTableRow(
       // If there is an eval teacher, pull its score, and update all of the other TDs,
       // as the task may have failed or be outdated, but its score is still valid.
       td.innerText = '';
-      fetchArtifact(task.status.taskId, 'public/build/devtest.metrics.json')
+      const { taskId } = task.status;
+      fetchArtifact(taskId, 'public/build/devtest.metrics.json')
         .then((response) => response.json())
         .then((metrics) => {
           const score = metrics?.comet?.score;
@@ -475,8 +495,9 @@ async function buildTableRow(
             langPair,
             score,
             created: new Date(task.task.created),
+            taskId,
           });
-          updateCometTD(td, langPair, score);
+          updateCometTD(td, langPair, score, taskId);
           updateScores();
         });
     }
@@ -496,31 +517,67 @@ async function buildTableRow(
     unscheduled: 0,
   };
 
+  /**
+   * @param {string[]} keys
+   * @param {any} defaultValue
+   * @returns {Record<string, any>}
+   */
+  function makeObj(keys, defaultValue) {
+    /** @type {Record<string, any>} */
+    const obj = {};
+
+    for (const key of keys) {
+      obj[key] = defaultValue;
+    }
+    return obj;
+  }
+
+  /**
+   * Training is a complicated graph, but attempt to order the results here.
+   */
+  const orderedSteps = [
+    'dataset-',
+    'translate-mono-',
+    'clean-corpus-',
+    'bicleaner-ai-',
+    'train-backwards-',
+    'alignments-backtranslated-',
+    'train-teacher-',
+    'alignments-student-',
+    'train-student-',
+    'finetune-student-',
+  ];
+
   /** @type {Record<string, "not-started" | "running" | "completed">} */
-  const heavyStepsCompleted = {
-    'translate-mono-': 'not-started',
-    'bicleaner-ai-': 'not-started',
-    'train-backwards-': 'not-started',
-    'alignments-backtranslated-': 'not-started',
-    'train-teacher-': 'not-started',
-    'train-student-': 'not-started',
-    'finetune-student-': 'not-started',
-  };
+  const stepsCompleted = makeObj(orderedSteps, 'not-started');
+
+  /** @type {Record<string, boolean>} */
+  const stepsFailed = makeObj(orderedSteps, false);
+
+  /** @type {Record<string, boolean>} */
+  const stepsException = makeObj(orderedSteps, false);
 
   for (const { status, task } of tasks) {
     // Compute the status counts
     const count = stateCounts[status.state];
     stateCounts[status.state] = count + 1;
 
-    // Compute if a heavy step was completed.
-    for (const taskNamePrefix of Object.keys(heavyStepsCompleted)) {
+    for (const taskNamePrefix of Object.keys(stepsCompleted)) {
       if (task.metadata.name.startsWith(taskNamePrefix)) {
+        // Compute if a step was completed.
         if (status.state === 'completed') {
-          if (heavyStepsCompleted[taskNamePrefix] === 'not-started') {
-            heavyStepsCompleted[taskNamePrefix] = 'completed';
+          if (stepsCompleted[taskNamePrefix] === 'not-started') {
+            stepsCompleted[taskNamePrefix] = 'completed';
           }
         } else if (status.state === 'running') {
-          heavyStepsCompleted[taskNamePrefix] = 'running';
+          stepsCompleted[taskNamePrefix] = 'running';
+        }
+
+        if (status.state === 'failed') {
+          stepsFailed[taskNamePrefix] = true;
+        }
+        if (status.state === 'exception') {
+          stepsException[taskNamePrefix] = true;
         }
       }
     }
@@ -554,7 +611,9 @@ async function buildTableRow(
 
   let completed = '';
   let running = '';
-  for (const [step, state] of Object.entries(heavyStepsCompleted)) {
+  let failed = '';
+  let exception = '';
+  for (const [step, state] of Object.entries(stepsCompleted)) {
     if (state === 'completed') {
       completed = step;
     }
@@ -562,14 +621,26 @@ async function buildTableRow(
       running = step;
     }
   }
+  for (const [step, didFail] of Object.entries(stepsFailed).reverse()) {
+    if (didFail) {
+      failed = step;
+    }
+  }
+  for (const [step, isException] of Object.entries(stepsException).reverse()) {
+    if (isException) {
+      exception = step;
+    }
+  }
   // Take off the last "-"
   completed = completed.slice(0, completed.length - 1);
   running = running.slice(0, running.length - 1);
+  failed = failed.slice(0, failed.length - 1);
+  exception = exception.slice(0, exception.length - 1);
 
   addStateCount('completed', undefined, completed);
   addStateCount('running', undefined, running);
-  addStateCount('failed', '#f44336');
-  addStateCount('exception', '#ffa000');
+  addStateCount('failed', '#f44336', failed);
+  addStateCount('exception', '#ffa000', exception);
   addStateCount('pending');
   addStateCount('unscheduled');
 

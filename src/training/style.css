@@ -42,7 +42,7 @@ td, th {
   text-wrap: nowrap;
 
   & span {
-    background-color: #ccc;
+    background-color: #cbcbcbcc;
     padding: 3px 6px;
     display: inline-block;
     margin: -3px 0 -3px 10px;
