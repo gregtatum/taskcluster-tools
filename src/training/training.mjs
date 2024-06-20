@@ -1,4 +1,5 @@
 import { isTaskGroupIdValid } from '../taskcluster.mjs';
+import { googleComet } from './eval.mjs';
 
 const server = 'https://firefox-ci-tc.services.mozilla.com';
 
@@ -279,6 +280,72 @@ function buildTable() {
 }
 
 /**
+ * @typedef {object} ScoreDetails
+ * @prop {string} langPair
+ * @prop {number} score
+ * @prop {Date} created
+ */
+
+/** @type {Array<ScoreDetails>} */
+const teacherScores = [];
+
+function updateScores() {
+  if (getShowAll()) {
+    // Do not update all of the scores if the scores are hidden.
+    return;
+  }
+
+  /** @type {Map<string, ScoreDetails>} */
+  const latestScores = new Map();
+
+  for (const scoreDetails of teacherScores) {
+    const latestScoreDetails = latestScores.get(scoreDetails.langPair);
+    if (
+      !latestScoreDetails ||
+      latestScoreDetails.created < scoreDetails.created
+    ) {
+      latestScores.set(scoreDetails.langPair, scoreDetails);
+    }
+  }
+
+  for (const { langPair, score } of latestScores.values()) {
+    for (const element of Array.from(
+      document.querySelectorAll(`[data-teacher-lang-pair=${langPair}]`),
+    )) {
+      const td = /** @type {HTMLTableCellElement} */ (element);
+      updateCometTD(td, langPair, score);
+    }
+  }
+}
+
+/**
+ * @param {HTMLTableCellElement} td
+ * @param {string} langPair
+ * @param {number} score
+ */
+function updateCometTD(td, langPair, score) {
+  const googleScore = googleComet[langPair] ?? 0;
+  const percentage = 100 * (1 - googleScore / score);
+  const sign = percentage >= 0 ? '+' : '';
+  const percentageDisplay = `${sign}${percentage.toFixed(2)}%`;
+
+  let shippable = 'Shippable';
+  td.style.color = '#fff';
+  td.style.background = '#388e3c';
+  if (percentage < -5) {
+    // Does not meet release criteria.
+    td.style.background = '#f44336';
+    shippable = 'Not shippable';
+  }
+
+  td.innerText = `${score} (${percentageDisplay})`;
+  td.title =
+    `${shippable} - COMET ${score} ` +
+    `vs Google Comet ${googleScore.toFixed(4)} ` +
+    `(${percentageDisplay})`;
+}
+
+/**
  * @param {(text: string | Element) => HTMLTableCellElement} createTD
  * @param {string} taskGroupId
  * @param {Map<string, Array<TaskAndStatus[]>>} taskGroupsByLangPair
@@ -352,6 +419,37 @@ async function buildTableRow(
     const td = createTD(a);
     td.appendChild(document.createTextNode(' '));
     td.appendChild(button);
+  }
+
+  {
+    const evalTeacher = tasks.find(
+      (t) =>
+        t.task.metadata.name.startsWith('evaluate-teacher-flores-devtest-') &&
+        t.status.state === 'completed',
+    );
+
+    let td = createTD('None');
+    if (evalTeacher) {
+      // If there is an eval teacher, pull its score, and update all of the other TDs,
+      // as the task may have failed or be outdated, but its score is still valid.
+      td.innerText = '';
+      fetchArtifact(
+        evalTeacher.status.taskId,
+        'public/build/devtest.metrics.json',
+      )
+        .then((response) => response.json())
+        .then((metrics) => {
+          const score = metrics?.comet?.score;
+          teacherScores.push({
+            langPair,
+            score,
+            created: new Date(evalTeacher.task.created),
+          });
+          updateCometTD(td, langPair, score);
+          updateScores();
+        });
+    }
+    td.dataset.teacherLangPair = langPair;
   }
 
   console.log(langPair, tasks);
@@ -479,6 +577,16 @@ function getHiddenTaskGroups() {
 }
 
 /**
+ * @param {string} taskId
+ * @param {string} artifactPath
+ * @returns {Promise<Response>}
+ */
+async function fetchArtifact(taskId, artifactPath) {
+  const taskUrl = `${server}/api/queue/v1/task/${taskId}/artifacts/${artifactPath}`;
+  return await fetch(taskUrl);
+}
+
+/**
  * @param {HTMLButtonElement} button
  * @param {TaskAndStatus} trainActionTask
  */
@@ -488,9 +596,7 @@ function copyConfigHandler(button, trainActionTask) {
       button.innerText = 'downloading...';
       button.disabled = true;
       const { taskId } = trainActionTask.status;
-      const artifactPath = 'public/parameters.yml';
-      const taskUrl = `${server}/api/queue/v1/task/${taskId}/artifacts/${artifactPath}`;
-      const response = await fetch(taskUrl);
+      const response = await fetchArtifact(taskId, 'public/parameters.yml');
       const configText = await response.text();
 
       // Extract the config
