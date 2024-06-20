@@ -388,6 +388,10 @@ async function buildTableRow(
   // Attempt to find a langpair
   let langPair = '';
   for (const { task } of tasks) {
+    if (task.metadata.name.match(/-src-[a-z]{2,3}$/)) {
+      // Monolingual task.
+      continue;
+    }
     const match = task.metadata.name.match(/-([a-z]{2,3}-[a-z]{2,3})$/);
     if (match) {
       langPair = match[1];
