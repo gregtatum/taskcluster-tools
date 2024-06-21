@@ -309,7 +309,7 @@ function updateScores() {
       const latestScoreDetails = latestScores.get(scoreDetails.langPair);
       if (
         !latestScoreDetails ||
-        latestScoreDetails.created < scoreDetails.created
+        latestScoreDetails.created > scoreDetails.created
       ) {
         latestScores.set(scoreDetails.langPair, scoreDetails);
       }
