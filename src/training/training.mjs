@@ -282,7 +282,7 @@ function buildTable() {
 /**
  * @typedef {object} ScoreDetails
  * @prop {string} langPair
- * @prop {number} score
+ * @prop {number | null} score
  * @prop {Date} created
  * @prop {string} taskId
  */
@@ -320,7 +320,17 @@ function updateScores() {
         document.querySelectorAll(`[data-${name}=${langPair}]`),
       )) {
         const td = /** @type {HTMLTableCellElement} */ (element);
-        updateCometTD(td, langPair, score, taskId);
+        if (score === null) {
+          while (td.lastChild) {
+            td.lastChild.remove();
+          }
+          const a = document.createElement('a');
+          a.innerText = 'Needs eval';
+          a.href = `https://firefox-ci-tc.services.mozilla.com/tasks/${taskId}`;
+          td.appendChild(a);
+        } else {
+          updateCometTD(td, langPair, score, taskId);
+        }
       }
     }
   }
@@ -451,42 +461,57 @@ async function buildTableRow(
     td.appendChild(button);
   }
 
+  /** @type {Array<{ name: string, evalMatch: RegExp, trainMatch: RegExp | null}>} */
   const evals = [
     {
       name: 'teacher1',
-      match: /^evaluate-teacher-flores-devtest-[a-z]{2,3}-[a-z]{2,3}-1$/,
+      evalMatch: /^evaluate-teacher-flores-devtest-[a-z]{2,3}-[a-z]{2,3}-1$/,
+      trainMatch: /^train-teacher-[a-z]{2,3}-[a-z]{2,3}-1$/,
     },
     {
       name: 'teacher2',
-      match: /^evaluate-teacher-flores-devtest-[a-z]{2,3}-[a-z]{2,3}-2/,
+      evalMatch: /^evaluate-teacher-flores-devtest-[a-z]{2,3}-[a-z]{2,3}-2/,
+      trainMatch: /^train-teacher-[a-z]{2,3}-[a-z]{2,3}-2$/,
     },
     {
       name: 'teacherensemble',
-      match: /^evaluate-teacher-ensemble-flores-devtest-[a-z]{2,3}-[a-z]{2,3}$/,
+      evalMatch:
+        /^evaluate-teacher-ensemble-flores-devtest-[a-z]{2,3}-[a-z]{2,3}$/,
+      trainMatch: null,
     },
     {
       name: 'student',
-      match: /^evaluate-student-flores-dev-[a-z]{2,3}-[a-z]{2,3}$/,
+      evalMatch: /^evaluate-student-flores-dev-[a-z]{2,3}-[a-z]{2,3}$/,
+      trainMatch: /^train-student-[a-z]{2,3}-[a-z]{2,3}-2$/,
     },
     {
       name: 'studentquantized',
-      match: /^evaluate-finetuned-student-flores-dev-[a-z]{2,3}-[a-z]{2,3}$ }/,
+      evalMatch: /^evaluate-quantized-flores-dev-[a-z]{2,3}-[a-z]{2,3}$ }/,
+      trainMatch: /^quantize-[a-z]{2,3}-[a-z]{2,3}$/,
     },
   ];
 
-  for (const { name, match } of evals) {
+  for (const { name, evalMatch, trainMatch } of evals) {
     const scoreList = scores[name];
-    const task = tasks.find(
+    const evalTask = tasks.find(
       (t) =>
-        t.task.metadata.name.match(match) && t.status.state === 'completed',
+        t.task.metadata.name.match(evalMatch) && t.status.state === 'completed',
     );
+    let trainTask;
+    if (trainMatch) {
+      trainTask = tasks.find(
+        (t) =>
+          t.task.metadata.name.match(trainMatch) &&
+          t.status.state === 'completed',
+      );
+    }
 
     let td = createTD('');
-    if (task) {
+    if (evalTask) {
       // If there is an eval teacher, pull its score, and update all of the other TDs,
       // as the task may have failed or be outdated, but its score is still valid.
       td.innerText = '';
-      const { taskId } = task.status;
+      const { taskId } = evalTask.status;
       fetchArtifact(taskId, 'public/build/devtest.metrics.json')
         .then((response) => response.json())
         .then((metrics) => {
@@ -494,12 +519,19 @@ async function buildTableRow(
           scoreList.push({
             langPair,
             score,
-            created: new Date(task.task.created),
+            created: new Date(evalTask.task.created),
             taskId,
           });
           updateCometTD(td, langPair, score, taskId);
           updateScores();
         });
+    } else if (trainTask) {
+      scoreList.push({
+        langPair,
+        score: null,
+        created: new Date(trainTask.task.created),
+        taskId: trainTask.status.taskId,
+      });
     }
 
     td.setAttribute(`data-${name}`, langPair);
