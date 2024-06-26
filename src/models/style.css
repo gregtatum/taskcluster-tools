@@ -37,12 +37,19 @@ td:nth-child(1) {
   border-right: 2px solid #aaa;
 }
 
-td:nth-child(6) {
+td:nth-child(7) {
   border-left: 2px solid #aaa;
 }
 
 td:nth-child(2),
-td:nth-child(6) {
+td:nth-child(7) {
   background-color: #eee;
   font-family: monospace;
+}
+
+/* Scores */
+td:nth-child(6),
+td:nth-child(11) {
+  font-family: monospace;
+  text-align: right;
 }

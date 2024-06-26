@@ -18,9 +18,11 @@ function getById(id) {
   return el;
 }
 
-async function main() {
-  const url =
-    'https://firefox.settings.services.mozilla.com/v1/buckets/main/collections/translations-models/records';
+/**
+ * @param {string} url
+ * @returns {Promise<any>}
+ */
+async function fetchJSON(url) {
   const response = await fetch(url);
 
   if (!response.ok) {
@@ -28,8 +30,23 @@ async function main() {
     throw new Error('Response failed.');
   }
 
+  return await response.json();
+}
+
+async function main() {
   /** @type {{ data: ModelRecord[] }} */
-  const records = await response.json();
+  const records = await fetchJSON(
+    'https://firefox.settings.services.mozilla.com/v1/buckets/main/collections/translations-models/records',
+  );
+  // @ts-ignore
+  window.records = records.data;
+  console.log('window.records', records.data);
+
+  /** @type {EvalResults} */
+  const cometResults = await fetchJSON(
+    // 'https://raw.githubusercontent.com/mozilla/firefox-translations-models/main/evaluation/comet-results.json',
+    'https://raw.githubusercontent.com/gregtatum/firefox-translations-models/json-results/evaluation/comet-results.json',
+  );
   // @ts-ignore
   window.records = records.data;
   console.log('window.records', records.data);
@@ -101,11 +118,12 @@ async function main() {
       const el = document.createElement('td');
       el.innerText = text;
       tr.appendChild(el);
+      return el;
     };
     td(dn.of(lang));
 
-    addToRow(td, `${lang}-en`, records.data, toEn[0]);
-    addToRow(td, `en-${lang}`, records.data, fromEn[0]);
+    addToRow(td, `${lang}-en`, records.data, cometResults, toEn[0]);
+    addToRow(td, `en-${lang}`, records.data, cometResults, fromEn[0]);
     tbody.append(tr);
   }
   getById('loading').style.display = 'none';
@@ -113,12 +131,13 @@ async function main() {
 }
 
 /**
- * @param {(text?: string) => void} td
+ * @param {(text?: string) => HTMLTableCellElement} td
  * @param {string} pair
  * @param {ModelRecord[]} records
+ * @param {EvalResults} cometResults
  * @param {ModelRecord} [model]
  */
-function addToRow(td, pair, records, model) {
+function addToRow(td, pair, records, cometResults, model) {
   if (model) {
     td(pair);
   } else {
@@ -129,6 +148,70 @@ function addToRow(td, pair, records, model) {
   td(getModelSize(records, model));
 
   td(getReleaseChannel(model));
+
+  const googleComet = cometResults[pair]?.['flores-test']?.['google'];
+  const bergamotComet = cometResults[pair]?.['flores-test']?.['bergamot'];
+  const googleCometAvg = getAverageScore(pair, cometResults, 'google');
+  const bergamotCometAvg = getAverageScore(pair, cometResults, 'bergamot');
+
+  const hasEvals = bergamotComet && googleComet;
+
+  const percentage = 100 * (1 - googleComet / bergamotComet);
+  const sign = percentage >= 0 ? '+' : '';
+  const percentageDisplay = hasEvals ? `${sign}${percentage.toFixed(2)}%` : '';
+
+  const avgPercentage = 100 * (1 - googleCometAvg / bergamotCometAvg);
+  const avgSign = avgPercentage >= 0 ? '+' : '';
+  const avgPercentageDisplay = hasEvals
+    ? `${avgSign}${avgPercentage.toFixed(2)}%`
+    : '';
+
+  const el = td(percentageDisplay);
+  console.log(`!!! pair`, pair, googleComet);
+  if (hasEvals) {
+    let shippable = 'Shippable';
+    el.style.color = '#fff';
+    el.style.background = '#388e3c';
+    if (percentage < -5) {
+      // Does not meet release criteria.
+      el.style.background = '#f44336';
+      shippable = 'Not shippable';
+    }
+
+    el.title =
+      `${shippable} - COMET ${bergamotComet.toFixed(4)} ` +
+      `vs Google Comet ${googleComet.toFixed(4)} ` +
+      `(${percentageDisplay})` +
+      '\n\n' +
+      `avg COMET ${bergamotCometAvg.toFixed(4)} ` +
+      `vs Google avg Comet ${googleCometAvg.toFixed(4)} ` +
+      `(${avgPercentageDisplay})`;
+  }
+}
+
+/**
+ * @param {string} pair
+ * @param {EvalResults} cometResults
+ * @param {string} translator
+ */
+function getAverageScore(pair, cometResults, translator) {
+  let count = 0;
+  let total = 0;
+  const datasets = cometResults[pair];
+  if (!datasets) {
+    return 0;
+  }
+  for (const obj of Object.values(datasets)) {
+    const score = obj[translator];
+    if (score) {
+      count++;
+      total += score;
+    }
+  }
+  if (count === 0) {
+    return 0;
+  }
+  return total / count;
 }
 
 /**
@@ -251,7 +334,7 @@ function getReleaseChannel(model) {
   filterExpression = filterExpression.replace('||', 'or');
   filterExpression = filterExpression.replace('&&', 'and');
   if (!filterExpression) {
-    filterExpression = 'All Channels';
+    filterExpression = 'Released Everywhere';
   }
   if (model.version?.endsWith('a1')) {
     filterExpression = 'Local Build or Nightly';

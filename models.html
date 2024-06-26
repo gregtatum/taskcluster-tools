@@ -8,6 +8,13 @@
   <script src='./src/models/models.mjs' type="module"></script>
   <link rel="stylesheet" href="./src/models/style.css">
   <h2>Firefox Translations Models</h2>
+  <p style='max-width: 500px; line-height: 1.5;'>
+    This page serves as the source of truth for what is being shipped to what channel for
+    Firefox translation models. Models are added to Nightly as they are trained. If they
+    meet our acceptance criteria of being with ~5% of Google Translate's COMET scores then
+    they are ready to ship. Some models may be held back or shipped at our teams discretion
+    based on other evaluation metrics.
+  </p>
   <p id="loading">Fetching the models…</p>
   <p id="error">Error fetching the models. See the console log.</p>
 
@@ -19,10 +26,16 @@
         <th>Version</th>
         <th>Size</th>
         <th>Release Status</th>
+        <th title="The model must be within 5% COMET evaluation score of Google's models to be shippable">
+          Score
+        </th>
         <th>Direction</th>
         <th>Version</th>
         <th>Size</th>
         <th>Release Status</th>
+        <th title="The model must be within 5% COMET evaluation score of Google's models to be shippable">
+          Score
+        </th>
       </tr>
     </thead>
     <tbody id="tbody">

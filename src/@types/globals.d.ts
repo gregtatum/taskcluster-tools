@@ -210,6 +210,13 @@ interface ModelRecord {
  filter_expression: string;
 }
 
+type LangPairStr = string
+type DatasetStr = string
+type TranslatorStr = string;
+type ScoreNum = number;
+
+type EvalResults = Record<LangPairStr, Record<DatasetStr, Record<TranslatorStr, ScoreNum>>>;
+
 declare type TaskState =
   | "completed"
   | "running"

@@ -4,13 +4,14 @@
   "main": "index.js",
   "author": "Greg Tatum",
   "scripts": {
-    "start": "http-server -o .",
+    "start": "http-server -c-1 -o .",
     "lint": "eslint \"./src/**/*.{js,mjs}\" --fix",
     "types": "tsc --noEmit"
   },
   "dependencies": {
     "@types/d3": "^7.4.3",
-    "@types/dat.gui": "^0.7.12"
+    "@types/dat.gui": "^0.7.12",
+    "onnxruntime-web": "^1.18.0"
   },
   "devDependencies": {
     "eslint": "^8.55.0",
