@@ -20,9 +20,9 @@ declare interface Task {
   taskGroupId: string; // "Fo1npr9eTFqsAj4DFlqBbA";
   dependencies: string[], // ["CTPPid-iT8WUEzf-j6YKUw", "Fn-77WB6SFKBuQGE62-SMg", ... ]
   requires: string; // "all-completed";
-  routes: ["checks"];
+  routes: string[], // ["checks"];
   priority: string; // "low";
-  retries: 5;
+  retries: number;
   created: string; // "2023-09-19T18:58:07.341Z";
   deadline: string; // "2023-09-24T18:58:07.341Z";
   expires: string; // "2023-10-17T18:58:07.341Z";

@@ -2,9 +2,15 @@
  * @param {TaskGraph} taskGraph
  * @param {boolean} isMergeChunks
  * @param {string[] | null} mergeTaskTypes
+ * @param {boolean} isSimplifyGraph
  * @returns {TaskAndStatus[]}
  */
-export function taskGraphToTasks(taskGraph, isMergeChunks, mergeTaskTypes) {
+export function taskGraphToTasks(
+  taskGraph,
+  isMergeChunks,
+  mergeTaskTypes,
+  isSimplifyGraph,
+) {
   /** @type {TaskAndStatus[]} */
   let tasks = [];
   for (const taskDefinition of Object.values(taskGraph)) {
@@ -20,7 +26,7 @@ export function taskGraphToTasks(taskGraph, isMergeChunks, mergeTaskTypes) {
       deadline: 'none',
       expires: 'none',
       retriesLeft: 0,
-      state: 'none',
+      state: 'unscheduled',
     };
     tasks.push({ status, task: taskDefinition.task });
   }
@@ -28,6 +34,10 @@ export function taskGraphToTasks(taskGraph, isMergeChunks, mergeTaskTypes) {
   if (isMergeChunks) {
     tasks = mergeChunks(tasks);
     mutateAndRemoveMissingDependencies(tasks);
+  }
+
+  if (isSimplifyGraph) {
+    tasks = mutateSimplifyTasks(tasks);
   }
 
   if (mergeTaskTypes) {
@@ -77,6 +87,7 @@ function setTaskToGroup(taskToGroup, taskId, taskGroupId) {
  * @param {string[] | null} mergeTaskTypes
  * @param {(message: string) => void} updateStatusMessage
  * @param {Set<string>} ignoredTaskGroupIds
+ * @param {boolean} isSimplifyGraph
  * @returns {Promise<{ mergedTasks: TaskAndStatus[], taskGroups: TaskGroup[]} | null>}
  */
 export async function getTasks(
@@ -87,7 +98,9 @@ export async function getTasks(
   mergeTaskTypes,
   updateStatusMessage,
   ignoredTaskGroupIds,
+  isSimplifyGraph,
 ) {
+  console.log(`!!! getTasks`, getTasks);
   if (!taskGroupIds.length) {
     return null;
   }
@@ -232,6 +245,10 @@ export async function getTasks(
 
   mutateAndRemoveMissingDependencies(tasks);
 
+  if (isSimplifyGraph) {
+    tasks = mutateSimplifyTasks(tasks);
+  }
+
   if (isMergeChunks) {
     tasks = mergeChunks(tasks);
   }
@@ -246,6 +263,142 @@ export async function getTasks(
 
   return { mergedTasks: tasks, taskGroups };
 }
+
+/**
+ * @param {TaskAndStatus[]} tasks
+ * @returns {TaskAndStatus[]}
+ */
+function mutateSimplifyTasks(tasks) {
+  const toolchainPrefixes = new Set(['build-', 'fetch-', 'toolchain-']);
+
+  mutateCreateMergedTask(tasks, 'toolchain', (task) => {
+    const { name } = task.task.metadata;
+    if (!name) {
+      return false;
+    }
+    for (const prefix of toolchainPrefixes) {
+      if (name.startsWith(prefix)) {
+        return true;
+      }
+    }
+    return false;
+  });
+
+  // mutateCreateMergedTask(tasks, 'dataset', (task) => {
+  //   const { name } = task.task.metadata;
+  //   if (!name) {
+  //     return false;
+  //   }
+  //   if (name.startsWith('dataset')) {
+  //     return true;
+  //   }
+  //   return false;
+  // });
+
+  console.log(`!!! tasks.length before2`, tasks.length);
+
+  tasks = mutateRemoveTaskFromGraph(tasks, (task) => {
+    return task.task.metadata.name.startsWith('all-');
+  });
+
+  console.log(
+    `!!! all-`,
+    tasks.filter((task) => {
+      return task.task.metadata.name.startsWith('all-');
+    }),
+  );
+  console.log(`!!! tasks.length after2`, tasks.length);
+
+  return tasks;
+}
+
+/**
+ * @param {TaskAndStatus[]} tasks
+ * @param {string} name
+ * @param {(task: TaskAndStatus) => boolean} doesMatchCriteria
+ */
+function mutateCreateMergedTask(tasks, name, doesMatchCriteria) {
+  let taskIdGeneration = 0;
+  /** @type {TaskAndStatus | null} */
+  let mergedToolchainTask = null;
+  const mergedToolchainDependencies = new Set();
+  const toolchainTaskIds = new Set();
+
+  /** @type {Record<string, TaskAndStatus>} */
+  const idToTask = {};
+  for (const task of tasks) {
+    idToTask[task.status.taskId] = task;
+  }
+
+  for (const task of tasks) {
+    if (!doesMatchCriteria(task)) {
+      continue;
+    }
+
+    // This is a toolchain task.
+    if (!mergedToolchainTask) {
+      mergedToolchainTask = createEmptyTaskAndStatus(
+        name,
+        `${name}-simplified` + taskIdGeneration++,
+      );
+      tasks.push(mergedToolchainTask);
+    }
+    for (const dependency of task.task.dependencies) {
+      mergedToolchainDependencies.add(dependency);
+    }
+    toolchainTaskIds.add(task.status.taskId);
+    task.task.dependencies = [mergedToolchainTask.status.taskId];
+  }
+
+  if (mergedToolchainTask) {
+    // Re-map the dependencies to the merged tool.
+    for (const task of tasks) {
+      if (doesMatchCriteria(task)) {
+        continue;
+      }
+      task.task.dependencies = task.task.dependencies.map((taskId) =>
+        toolchainTaskIds.has(taskId)
+          ? mergedToolchainTask.status.taskId
+          : taskId,
+      );
+    }
+
+    // Add the merged synthetic tasks.
+    mergedToolchainTask.task.dependencies = Array.from(
+      mergedToolchainDependencies,
+    );
+  }
+}
+
+/**
+ * @param {TaskAndStatus[]} tasks
+ * @param {(task: TaskAndStatus) => boolean} doesMatchCriteria
+ * @returns {TaskAndStatus[]}
+ */
+function mutateRemoveTaskFromGraph(tasks, doesMatchCriteria) {
+  /** @type {Set<string>} */
+  const removedTaskIds = new Set();
+
+  console.log(`!!! tasks.length before`, tasks.length);
+  tasks = tasks.filter((task) => {
+    if (doesMatchCriteria(task)) {
+      console.log(`!!! Removing`, task);
+      removedTaskIds.add(task.status.taskId);
+      return false;
+    }
+    return true;
+  });
+
+  for (const task of tasks) {
+    task.task.dependencies = task.task.dependencies.filter(
+      (taskId) => !removedTaskIds.has(taskId),
+    );
+  }
+
+  console.log(`!!! tasks.length after`, tasks.length);
+  return tasks;
+}
+
 /**
  * @param {TaskAndStatus[]} tasks
  * @return {TaskAndStatus[]}
@@ -566,4 +719,70 @@ function fetchStreamWithDebounce(url, debounceTime) {
         }
       });
   });
+}
+
+/**
+ * @param {string} name
+ * @param {string} taskId
+ * @returns {TaskAndStatus}
+ */
+function createEmptyTaskAndStatus(name, taskId) {
+  return {
+    status: {
+      taskId,
+      provisionerId: '',
+      workerType: '',
+      taskQueueId: '',
+      schedulerId: '',
+      projectId: '',
+      taskGroupId: '',
+      deadline: '',
+      expires: '',
+      retriesLeft: 0,
+      state: 'unscheduled',
+    },
+    task: {
+      provisionerId: '',
+      workerType: '',
+      taskQueueId: '',
+      schedulerId: '',
+      projectId: '',
+      taskGroupId: '',
+      dependencies: [],
+      requires: '',
+      routes: [],
+      priority: '',
+      retries: 0,
+      created: '',
+      deadline: '',
+      expires: '',
+      scopes: [],
+      payload: {
+        artifacts: [
+          {
+            name: 'public/build',
+            path: 'artifacts',
+            type: 'directory',
+          },
+        ],
+        command: [],
+      },
+      metadata: {
+        name,
+        owner: '',
+        source: '',
+        description: '',
+      },
+      tags: {
+        kind: '',
+        label: name,
+        createdForUser: '',
+        'worker-implementation': '',
+      },
+      extra: {
+        index: { rank: 0 },
+        parent: '',
+      },
+    },
+  };
 }

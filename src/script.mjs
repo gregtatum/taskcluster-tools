@@ -32,6 +32,7 @@ asAny(window).profilerOrigin = 'https://profiler.firefox.com';
 const elements = {
   taskGroup: /** @type {HTMLInputElement} */ (getElement('taskGroup')),
   mergeChunks: /** @type {HTMLInputElement} */ (getElement('mergeChunks')),
+  simplifyGraph: /** @type {HTMLInputElement} */ (getElement('simplifyGraph')),
   fetchDependentTasks: /** @type {HTMLInputElement} */ (
     getElement('fetchDependentTasks')
   ),
@@ -63,6 +64,7 @@ async function loadTaskGraphJSON(taskGraph) {
     taskGraph,
     getIsMergeChunks(),
     getMergeTaskTypes(),
+    getIsSimplifyGraph(),
   );
 
   exposeAsGlobal('taskGraph', taskGraph);
@@ -79,6 +81,7 @@ async function init() {
 
   const server = getServer();
 
+  console.log(`!!! getTasks calloing`);
   const result = await getTasks(
     taskGroupIds,
     server,
@@ -87,6 +90,7 @@ async function init() {
     getMergeTaskTypes(),
     updateStatusMessage,
     new Set(getIgnoredTaskGroupIds()),
+    getIsSimplifyGraph(),
   );
 
   if (result) {
@@ -394,6 +398,13 @@ function setupHandlers() {
     changeLocation(urlParams);
   });
 
+  elements.simplifyGraph.checked = getIsSimplifyGraph();
+  elements.simplifyGraph.addEventListener('click', () => {
+    const urlParams = new URLSearchParams(window.location.search);
+    urlParams.set('simplifyGraph', elements.simplifyGraph.checked.toString());
+    changeLocation(urlParams);
+  });
+
   elements.fetchDependentTasks.checked = getFetchDependentTasks();
   elements.fetchDependentTasks.addEventListener('click', () => {
     const urlParams = new URLSearchParams(window.location.search);
@@ -533,6 +544,16 @@ function setupProfilerButton(taskGroups, taskClusterURL) {
 function getIsMergeChunks() {
   const urlParams = new URLSearchParams(window.location.search);
   return urlParams.get('mergeChunks') === 'true';
+}
+
+/**
+ * Should the task chunks be merged?
+ *
+ * @returns {boolean}
+ */
+function getIsSimplifyGraph() {
+  const urlParams = new URLSearchParams(window.location.search);
+  return urlParams.get('simplifyGraph') === 'true';
 }
 
 /**
