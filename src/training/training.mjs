@@ -481,12 +481,12 @@ async function buildTableRow(
     },
     {
       name: 'student',
-      evalMatch: /^evaluate-student-flores-dev-[a-z]{2,3}-[a-z]{2,3}$/,
-      trainMatch: /^train-student-[a-z]{2,3}-[a-z]{2,3}-2$/,
+      evalMatch: /^evaluate-student-flores-devtest-[a-z]{2,3}-[a-z]{2,3}$/,
+      trainMatch: /^train-student-[a-z]{2,3}-[a-z]{2,3}$/,
     },
     {
       name: 'studentquantized',
-      evalMatch: /^evaluate-quantized-flores-dev-[a-z]{2,3}-[a-z]{2,3}$ }/,
+      evalMatch: /^evaluate-quantized-flores-devtest-[a-z]{2,3}-[a-z]{2,3}$/,
       trainMatch: /^quantize-[a-z]{2,3}-[a-z]{2,3}$/,
     },
   ];
