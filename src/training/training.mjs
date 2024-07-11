@@ -1,3 +1,4 @@
+import { exposeAsGlobal } from '../utils.mjs';
 import { isTaskGroupIdValid } from '../taskcluster.mjs';
 import { googleComet } from './eval.mjs';
 
@@ -15,12 +16,14 @@ const elements = {
 
 /** @type {Array<TaskGroup>} */
 const taskGroups = [];
-// @ts-ignore
-window.taskGroups = taskGroups;
-console.log('window.taskGroups', taskGroups);
+
+exposeAsGlobal('taskGroups', taskGroups);
 
 /**
+ * Gets an element and throws if it doesn't exists.
+ *
  * @param {string} id
+ * @returns {HTMLElement}
  */
 function getElement(id) {
   const el = document.getElementById(id);
@@ -125,6 +128,7 @@ async function main() {
  */
 async function fetchTaskGroup(taskGroupId) {
   const listUrl = `${server}/api/queue/v1/task-group/${taskGroupId}/list`;
+  console.log('Fetching task group', listUrl);
   const response = await fetch(listUrl);
   if (!response.ok) {
     const error = await response.json();
@@ -147,6 +151,29 @@ export async function fetchTask(taskId) {
     return Promise.reject(new Error(error));
   }
   return await response.json();
+}
+
+/**
+ * For train actions, we need the task group ID that gets created as a result of the
+ * train action.
+ *
+ * @param {string} taskId
+ * @returns {Promise<null | string>}
+ */
+async function getDependentTaskGroupId(taskId) {
+  const cacheKey = 'dependent-task-group-id-' + taskId;
+  const cached = localStorage.getItem(cacheKey);
+  if (cached) {
+    return cached;
+  }
+  const { tasks } = await fetchDependents(taskId);
+  const [firstTask] = tasks;
+  if (!firstTask) {
+    // No tasks have been scheduled yet.
+    return null;
+  }
+  localStorage.setItem(cacheKey, firstTask.task.taskGroupId);
+  return firstTask.task.taskGroupId;
 }
 
 /**
@@ -192,13 +219,19 @@ function createTableRow(tbody) {
 }
 
 function buildTable() {
-  /** @type {Map<string, Array<TaskAndStatus[]>>} */
+  /**
+   * Each task group here belongs to a language pair, and we need to assemble
+   * various runs together into a single row on the table.
+   *
+   * @type {Map<string, Array<TaskAndStatus[]>>}
+   */
   const taskGroupsByLangPair = new Map();
 
-  const fetchPromises = getTrainTaskGroupIds().map(async (trainTaskGroupId) => {
-    const listUrl = `${server}/api/queue/v1/task-group/${trainTaskGroupId}/list`;
+  const hiddenTaskGroups = getHiddenTaskGroups();
+  const showAll = getShowAll();
 
-    console.log('Fetching Task Group:', listUrl);
+  const fetchPromises = getTrainTaskGroupIds().map(async (trainTaskGroupId) => {
+    // The actions all belong to a task group, fetch the information for this task group.
     const actionTaskGroup = await fetchTaskGroup(trainTaskGroupId);
     console.log('Action task group', actionTaskGroup);
 
@@ -207,43 +240,49 @@ function buildTable() {
     );
 
     console.log('trainTasks', trainTasks);
-    // @ts-ignore
-    window.trainTasks = trainTasks;
-
-    const hidden = getHiddenTaskGroups();
-    const showAll = getShowAll();
 
     // Go through all of the train actions.
     const promises = trainTasks.map(async (trainActionTask) => {
-      const { tasks } = await fetchDependents(trainActionTask.status.taskId);
-      const [firstTask] = tasks;
-      if (!firstTask) {
+      const taskGroupId = await getDependentTaskGroupId(
+        trainActionTask.status.taskId,
+      );
+
+      if (!taskGroupId) {
+        // Create an empty table row, there is nothing else to do until tasks
+        // are generated.
         const { createTD } = createTableRow(elements.tbody);
-        if (getShowAll()) {
+        if (showAll) {
           createTD(
             `${trainActionTask.status.taskId} ${trainActionTask.status.state}`,
           );
         }
       } else {
-        const isHidden = hidden.includes(firstTask.task.taskGroupId);
+        // Build the full table row. Eventually these get deduplicated by language pair.
+        const isHidden = hiddenTaskGroups.includes(taskGroupId);
         if (showAll || !isHidden) {
           const { tr, createTD } = createTableRow(elements.tbody);
 
-          tr.dataset.taskGroupId = firstTask.task.taskGroupId;
+          tr.dataset.taskGroupId = taskGroupId;
           await buildTableRow(
             createTD,
-            firstTask.task.taskGroupId,
+            taskGroupId,
             taskGroupsByLangPair,
             trainActionTask,
             isHidden,
           );
         }
       }
+      // Sort the table by langpair after every row is built.
+      scheduleTableRowSort();
     });
 
-    return Promise.allSettled(promises);
+    // Wait until everything is settled. If a lookup fails this won't block the final
+    // part of the script, but we still want to log the error.
+    return Promise.all(promises.map((promise) => promise.catch(console.error)));
   });
 
+  // Either hide or dim the older task groups depending on the value
+  // of `showAll`.
   Promise.allSettled(fetchPromises).then(() => {
     for (const taskGroups of taskGroupsByLangPair.values()) {
       // Sort newest to oldest
@@ -252,6 +291,8 @@ function buildTable() {
         const b = bList[0].task.created;
         return a < b ? 1 : a > b ? -1 : 0;
       });
+
+      // Skip the first task group as it's the most recent, and shouldn't be dimmed.
       for (const taskGroup of taskGroups.slice(1)) {
         const { taskGroupId } = taskGroup[0].task;
         /** @type {HTMLElement | null} */
@@ -261,18 +302,16 @@ function buildTable() {
         if (!tr) {
           throw new Error('Could not find tr for task group.');
         }
-        if (getShowAll()) {
+        if (showAll) {
           tr.classList.add('older-taskgroup');
         } else {
           tr.style.display = 'none';
         }
       }
     }
-    taskGroupsByLangPair;
 
-    // @ts-ignore
-    window.taskGroupsByLangPair = taskGroupsByLangPair;
-    console.log('taskGroupsByLangPair', taskGroupsByLangPair);
+    // Expose this as a global after everything is fetched and processed.
+    exposeAsGlobal('taskGroupsByLangPair', taskGroupsByLangPair);
   });
 
   elements.loading.style.display = 'none';
@@ -287,7 +326,13 @@ function buildTable() {
  * @prop {string} taskId
  */
 
-/** @type {Record<string, Array<ScoreDetails>>} */
+/**
+ * The evaluation scores need to be found in tasks in the task groups. When they are
+ * are found they need to be sorted to find the newest scores metrics. This is because
+ * runs may be retriggered if the scores are too low.
+ *
+ * @type {Record<string, Array<ScoreDetails>>}
+ */
 const scores = {
   teacher1: [],
   teacher2: [],
@@ -296,15 +341,23 @@ const scores = {
   studentquantized: [],
 };
 
+/**
+ * As scores are pulled in they need to be accumulated and summarized into a row. Only
+ * the newest score is used as models are retriggered for errors. If all of the rows
+ * are shown then this update step is skipped.
+ */
 function updateScores() {
   if (getShowAll()) {
-    // Do not update all of the scores if the scores are hidden.
+    // Do not update all of the scores if the scores are all shown.
     return;
   }
   for (const [name, scoresList] of Object.entries(scores)) {
-    /** @type {Map<string, ScoreDetails>} */
+    /**
+     * Compute the latest scores for each language pair.
+     *
+     * @type {Map<string, ScoreDetails>}
+     */
     const latestScores = new Map();
-
     for (const scoreDetails of scoresList) {
       const latestScoreDetails = latestScores.get(scoreDetails.langPair);
       if (
@@ -315,12 +368,16 @@ function updateScores() {
       }
     }
 
+    // Update the COMET scores for a TD, or note that an eval score is still needed.
     for (const { langPair, score, taskId } of latestScores.values()) {
       for (const element of Array.from(
         document.querySelectorAll(`[data-${name}=${langPair}]`),
       )) {
         const td = /** @type {HTMLTableCellElement} */ (element);
         if (score === null) {
+          // A null score means that a model was created, but there is no evaluation
+          // result. This can happen depending on the target stage that is chosen.
+          // Generally this indicates that an eval step needs to be triggered.
           while (td.lastChild) {
             td.lastChild.remove();
           }
@@ -337,6 +394,8 @@ function updateScores() {
 }
 
 /**
+ * Update a TD with the relevant score information, and title text.
+ *
  * @param {HTMLTableCellElement} td
  * @param {string} langPair
  * @param {number} score
@@ -382,6 +441,10 @@ function updateCometTD(td, langPair, score, taskId) {
 }
 
 /**
+ * Each task group gets its own row, which gets built here. At the end of all the fetches
+ * the rows may be hidden. This function contains the most complicated logic. At the end
+ * of it the rows are all sorted.
+ *
  * @param {(text: string | Element) => HTMLTableCellElement} createTD
  * @param {string} taskGroupId
  * @param {Map<string, Array<TaskAndStatus[]>>} taskGroupsByLangPair
@@ -400,7 +463,6 @@ async function buildTableRow(
 
   {
     // Build the task group ID link
-
     const div = document.createElement('div');
     div.className = 'taskGroupCell';
 
@@ -454,12 +516,15 @@ async function buildTableRow(
     );
     const a = document.createElement('a');
     a.innerText = langPair;
-    a.href = `https://wandb.ai/moz-translations/${langPair}/overview`;
+    a.href = `https://wandb.ai/moz-translations/${langPair}/workspace`;
     a.target = '_blank';
     const td = createTD(a);
     td.appendChild(document.createTextNode(' '));
     td.appendChild(button);
   }
+
+  // The "[a-z]{2,3}-[a-z]{2,3}" part of the regexes below all match the language
+  // pair, so for instance "en-ca". It supports langtags of length 2-3.
 
   /** @type {Array<{ name: string, evalMatch: RegExp, trainMatch: RegExp | null}>} */
   const evals = [
@@ -512,19 +577,22 @@ async function buildTableRow(
       // as the task may have failed or be outdated, but its score is still valid.
       td.innerText = '';
       const { taskId } = evalTask.status;
-      fetchArtifact(taskId, 'public/build/devtest.metrics.json')
-        .then((response) => response.json())
-        .then((metrics) => {
-          const score = metrics?.comet?.score;
-          scoreList.push({
-            langPair,
-            score,
-            created: new Date(evalTask.task.created),
-            taskId,
-          });
-          updateCometTD(td, langPair, score, taskId);
-          updateScores();
+      fetchArtifact(
+        taskId,
+        'public/build/devtest.metrics.json',
+        'json',
+        true /* cache */,
+      ).then((metrics) => {
+        const score = metrics?.comet?.score;
+        scoreList.push({
+          langPair,
+          score,
+          created: new Date(evalTask.task.created),
+          taskId,
         });
+        updateCometTD(td, langPair, score, taskId);
+        updateScores();
+      });
     } else if (trainTask) {
       scoreList.push({
         langPair,
@@ -675,9 +743,6 @@ async function buildTableRow(
   addStateCount('exception', '#ffa000', exception);
   addStateCount('pending');
   addStateCount('unscheduled');
-
-  // Sort by langpair.
-  sortTable(elements.table, 1);
 }
 
 /**
@@ -712,13 +777,33 @@ function getHiddenTaskGroups() {
 }
 
 /**
+ * Fetch an artifact, and optionally cache the results.
+ *
  * @param {string} taskId
  * @param {string} artifactPath
- * @returns {Promise<Response>}
+ * @param {"text" | "json"} returnType
+ * @param {boolean} cache
+ * @returns {Promise<any>}
  */
-async function fetchArtifact(taskId, artifactPath) {
+async function fetchArtifact(taskId, artifactPath, returnType, cache) {
   const taskUrl = `${server}/api/queue/v1/task/${taskId}/artifacts/${artifactPath}`;
-  return await fetch(taskUrl);
+  const cacheKey = `cache-artifact-${taskUrl}`;
+  if (cache) {
+    const cached = localStorage.getItem(cacheKey);
+    if (cached) {
+      return returnType === 'text' ? cached : JSON.parse(cached);
+    }
+  }
+  const response = await fetch(taskUrl);
+  if (returnType === 'text') {
+    const text = await response.text();
+    localStorage.setItem(cacheKey, text);
+    return text;
+  }
+
+  const json = await response.json();
+  localStorage.setItem(cacheKey, JSON.stringify(json));
+  return json;
 }
 
 /**
@@ -730,9 +815,14 @@ function copyConfigHandler(button, trainActionTask) {
     try {
       button.innerText = 'downloading...';
       button.disabled = true;
-      const { taskId } = trainActionTask.status;
-      const response = await fetchArtifact(taskId, 'public/parameters.yml');
-      const configText = await response.text();
+
+      /** @type {string} */
+      const configText = await fetchArtifact(
+        trainActionTask.status.taskId,
+        'public/parameters.yml',
+        'text',
+        true /* cache */,
+      );
 
       // Extract the config
       const parts = configText.split('\ntraining_config:\n');
@@ -822,7 +912,23 @@ function changeLocation(urlParams) {
   window.location = newLocation;
 }
 
+let isScheduled = false;
+
 /**
+ * Schedule the table sorts as they are quite slow.
+ */
+function scheduleTableRowSort() {
+  if (!isScheduled) {
+    isScheduled = true;
+    requestAnimationFrame(() => {
+      sortTable(elements.table, /* Lang pair column index */ 1);
+      isScheduled = false;
+    });
+  }
+}
+
+/**
+ * Kind of a hacky function to sort a table based on a column and index.
  * @param {HTMLTableElement} table
  * @param {number} columnIndex
  */
@@ -839,14 +945,10 @@ function sortTable(table, columnIndex, dir = 'asc') {
     for (i = 1; i < rows.length - 1; i++) {
       shouldSwitch = false;
 
-      const x =
-        rows[i].querySelectorAll('td')[columnIndex]?.innerText.toLowerCase() ??
-        '';
+      const x = rows[i].querySelectorAll('td')[columnIndex]?.textContent ?? '';
 
       const y =
-        rows[i + 1]
-          .querySelectorAll('td')
-          [columnIndex]?.innerText.toLowerCase() ?? '';
+        rows[i + 1].querySelectorAll('td')[columnIndex]?.textContent ?? '';
 
       if (dir == 'asc') {
         if (x > y) {
