@@ -58,15 +58,15 @@ td:nth-child(2) {
 }
 
 /* What is running */
-td:nth-child(8) {
+td:nth-child(9) {
   border-left: 2px solid #bebebe;
 }
-td:nth-child(8),
 td:nth-child(9),
 td:nth-child(10),
 td:nth-child(11),
 td:nth-child(12),
-td:nth-child(13) {
+td:nth-child(13),
+td:nth-child(14) {
   background: #eee;
 }
 

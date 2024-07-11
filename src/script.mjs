@@ -114,23 +114,31 @@ function reportTime(taskGroups) {
     teacher: costPreemptibleGPU,
     student: costPreemptibleGPU,
     backtranslations: costPreemptibleGPU,
+    bicleaner: costPreemptibleGPU,
+    evaluate: costPreemptibleGPU,
   };
+  /**
+   * @param {TaskAndStatus} task
+   * @returns {number}
+   */
+  const getCost = (task) =>
+    task.task.workerType.endsWith('-standard')
+      ? costNonPreemptibleGPU
+      : costPreemptibleGPU;
+
   for (const taskGroup of taskGroups) {
     for (const task of taskGroup.tasks) {
       if (task.task.metadata.name.startsWith('train-student-')) {
-        costs.student = task.task.workerType.endsWith('-standard')
-          ? costNonPreemptibleGPU
-          : costPreemptibleGPU;
+        costs.student = getCost(task);
       }
       if (task.task.metadata.name.startsWith('train-teacher-')) {
-        costs.teacher = task.task.workerType.endsWith('-standard')
-          ? costNonPreemptibleGPU
-          : costPreemptibleGPU;
+        costs.teacher = getCost(task);
       }
       if (task.task.metadata.name.startsWith('train-backwards-')) {
-        costs.teacher = task.task.workerType.endsWith('-standard')
-          ? costNonPreemptibleGPU
-          : costPreemptibleGPU;
+        costs.teacher = getCost(task);
+      }
+      if (task.task.metadata.name.startsWith('bicleaner-ai-')) {
+        costs.bicleaner = getCost(task);
       }
     }
   }
@@ -253,7 +261,7 @@ function reportTime(taskGroups) {
   );
 
   logFiltered(
-    'Translate student data (mono-src):',
+    'Synthesize student data (mono-src):',
     ({ task }) => {
       const { name } = task.metadata;
       return name.startsWith('translate-mono-src');
@@ -262,7 +270,7 @@ function reportTime(taskGroups) {
   );
 
   logFiltered(
-    'Translate backtranslation (mono-trg):',
+    'Synthesize backtranslation data (mono-trg):',
     ({ task }) => {
       const { name } = task.metadata;
       return name.startsWith('translate-mono-trg');
@@ -271,7 +279,7 @@ function reportTime(taskGroups) {
   );
 
   logFiltered(
-    'Translate "corpus" time:',
+    'Translate "corpus" time',
     ({ task }) => {
       const { name } = task.metadata;
       return name.startsWith('translate-corpus');
@@ -280,7 +288,7 @@ function reportTime(taskGroups) {
   );
 
   logFiltered(
-    'Compute alignments:',
+    'Compute alignments',
     ({ task }) => {
       const { name } = task.metadata;
       return name.startsWith('alignments-');
@@ -289,12 +297,21 @@ function reportTime(taskGroups) {
   );
 
   logFiltered(
-    'Score the model:',
+    'Bicleaner AI',
     ({ task }) => {
       const { name } = task.metadata;
-      return name.startsWith('score-');
+      return name.startsWith('bicleaner-ai-');
     },
-    costCpu,
+    costs.bicleaner,
+  );
+
+  logFiltered(
+    'Evaluations',
+    ({ task }) => {
+      const { name } = task.metadata;
+      return name.startsWith('evaluate-');
+    },
+    costs.evaluate,
   );
 
   console.table(table);

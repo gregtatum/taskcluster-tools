@@ -44,8 +44,7 @@ async function main() {
 
   /** @type {EvalResults} */
   const cometResults = await fetchJSON(
-    // 'https://raw.githubusercontent.com/mozilla/firefox-translations-models/main/evaluation/comet-results.json',
-    'https://raw.githubusercontent.com/gregtatum/firefox-translations-models/json-results/evaluation/comet-results.json',
+    'https://raw.githubusercontent.com/mozilla/firefox-translations-models/main/evaluation/comet-results.json',
   );
   // @ts-ignore
   window.records = records.data;
