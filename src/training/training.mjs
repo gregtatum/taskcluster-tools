@@ -1,6 +1,5 @@
 import { exposeAsGlobal } from '../utils.mjs';
 import { isTaskGroupIdValid } from '../taskcluster.mjs';
-import { googleComet } from './eval.mjs';
 
 const server = 'https://firefox-ci-tc.services.mozilla.com';
 
@@ -393,6 +392,49 @@ function updateScores() {
   }
 }
 
+/** @type {Promise<EvalResults>} */
+let cometScores;
+function getCometScores() {
+  if (cometScores) {
+    return cometScores;
+  }
+  cometScores = _getCometScores();
+  return cometScores;
+}
+
+/**
+ * @returns {Promise<EvalResults>}
+ */
+async function _getCometScores() {
+  const response = await fetch(
+    'https://raw.githubusercontent.com/mozilla/firefox-translations-models/main/evaluation/comet-results.json',
+  );
+
+  return await response.json();
+}
+
+/**
+ * @param {EvalResults} cometResults
+ * @param {string} langPair
+ * @return {number}
+ */
+function getAverageGoogleCometScore(cometResults, langPair) {
+  let googleScore = 0;
+  let googleScoreCount = 0;
+  if (cometResults[langPair]) {
+    for (const evals of Object.values(cometResults[langPair])) {
+      if (evals['google']) {
+        googleScore += evals['google'];
+        googleScoreCount++;
+      }
+    }
+    if (googleScoreCount) {
+      googleScore /= googleScoreCount;
+    }
+  }
+  return googleScore;
+}
+
 /**
  * Update a TD with the relevant score information, and title text.
  *
@@ -401,8 +443,10 @@ function updateScores() {
  * @param {number} score
  * @param {string} taskId
  */
-function updateCometTD(td, langPair, score, taskId) {
-  const googleScore = googleComet[langPair] ?? 0;
+async function updateCometTD(td, langPair, score, taskId) {
+  const cometResults = await getCometScores();
+  // const googleScore = cometResults[langPair]?.['flores-test']?.['google'] ?? 0;
+  const googleScore = getAverageGoogleCometScore(cometResults, langPair);
   const percentage = 100 * (1 - googleScore / score);
   const sign = percentage >= 0 ? '+' : '';
   const percentageDisplay = `${sign}${percentage.toFixed(2)}%`;
