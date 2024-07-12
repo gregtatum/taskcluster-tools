@@ -15,6 +15,18 @@
       <input type="text" id="taskGroup" placeholder="Add a Task Group ID">
     </div>
     <div>
+      <input type="number" value="0.99" id="costPreemptibleGPU" />
+      <label for="costPreemptibleGPU">$/hr gpu (preemptible)</label>
+    </div>
+    <div>
+      <input type="number" value="3.42" id="costNonPreemptibleGPU" />
+      <label for="costNonPreemptibleGPU">$/hr gpu (nonpreemptible)</label>
+    </div>
+    <div>
+      <input type="number" value="0.14" id="costCpu" />
+      <label for="costCpu">$/hr cpu</label>
+    </div>
+    <div>
       <input type="checkbox" id="fetchDependentTasks">
       <label for="fetchDependentTasks">Fetch dependent tasks</label>
     </div>
@@ -53,7 +65,7 @@
   </div>
   <div id="error"></div>
   <div id="costBreakdown">
-    <h2>Totals</h2>
+    <h2>Total Cost Estimates</h2>
     <table>
       <thead>
         <tr>

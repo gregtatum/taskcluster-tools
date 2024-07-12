@@ -167,6 +167,20 @@ interface TimeRangeNonNull {
   end: number;
 }
 
+interface TimeRangeCost {
+  start: number | null;
+  end: number | null;
+  state: TaskState;
+  costPerHour: number;
+}
+
+interface TimeRangeCostNonNull {
+  start: number;
+  end: number;
+  state: TaskState;
+  costPerHour: number;
+}
+
 /**
  * For Remote Settings, the JSON details about the attachment.
  */

@@ -67,3 +67,7 @@ td, th {
     margin: 4px;
   }
 }
+
+body {
+  margin-bottom: 5em;
+}

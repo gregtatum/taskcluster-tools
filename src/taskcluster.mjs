@@ -107,17 +107,9 @@ export async function getTasks(
   console.log('Using the following taskGroupIds', taskGroupIds);
 
   /** @type {Array<Promise<TaskGroup>>} */
-  const taskGroupPromises = taskGroupIds.map((id) => {
-    const listUrl = `${server}/api/queue/v1/task-group/${id}/list`;
-    console.log('Fetching Task Group:', listUrl);
-    return fetch(listUrl).then((response) => {
-      if (response.ok) {
-        return response.json();
-      }
-      response.json().then((json) => console.error(json));
-      return Promise.reject('Could not fetch task.');
-    });
-  });
+  const taskGroupPromises = taskGroupIds.map((id) =>
+    fetchTaskGroup(server, id),
+  );
 
   let taskGroups = await Promise.all(taskGroupPromises);
 
@@ -246,6 +238,24 @@ export async function getTasks(
 
   return { mergedTasks: tasks, taskGroups };
 }
+
+/**
+ * @param {string} server
+ * @param {string} taskGroupId
+ * @return {Promise<TaskGroup>}
+ */
+export function fetchTaskGroup(server, taskGroupId) {
+  const listUrl = `${server}/api/queue/v1/task-group/${taskGroupId}/list`;
+  console.log('Fetching Task Group:', listUrl);
+  return fetch(listUrl).then((response) => {
+    if (response.ok) {
+      return response.json();
+    }
+    response.json().then((json) => console.error(json));
+    return Promise.reject('Could not fetch task.');
+  });
+}
+
 /**
  * @param {TaskAndStatus[]} tasks
  * @return {TaskAndStatus[]}
