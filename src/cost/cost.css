@@ -48,6 +48,10 @@ td, th {
 
 #taskGroups {
   display: none; /* flex */
+
+  table {
+    align-self: start;
+  }
 }
 
 #taskGroupTasks {

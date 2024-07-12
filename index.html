@@ -1,43 +1,87 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Task Visualization</title>
-  <script src="assets/d3.v7.min.js"></script>
-  <script src="assets/dat/dat.gui.min.js"></script>
-  <link rel="stylesheet" href="assets/dat/dat.gui.css">
-  <link rel="stylesheet" href="src/style.css">
+  <meta charset="utf-8" />
+  <title>Taskcluster Tools for Translations</title>
+  <style>
+    :root {
+      font-family: sans-serif;
+      overflow-x: hidden;
+    }
+    .links {
+      & div {
+        display: flex;
+        align-items: center;
+      }
+      & a {
+        display: flex;
+        min-width: 200px;
+        padding: 9px 10px;
+        background: #eee;
+        border-radius: 3px;
+        border: 1px solid #aaa;
+        text-decoration: none;
+        color: #000;
+        justify-content: center;
+        align-items: center;
+        margin: 1em;
+      }
+      & a:hover {
+        border: 1px solid #000;
+      }
+    }
+    .container {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      flex-direction: column;
+    }
+    .header {
+      max-width: 700px;
+      line-height: 1.5em;
+      border-bottom: 1px solid #aaa;
+      margin: 2em;
+      padding: 2em;
+    }
+  </style>
 </head>
 <body>
-  <div id="info">
-    <h2>Taskgraph Visualizer</h2>
-    <p id="info-message">
-      Visualize a <a href="https://firefox-ci-tc.services.mozilla.com/">taskgraph</a>
-      using a force directed graph. Add a a task group id, like "PuI6mYZPTUqAfyZMTgeUng"
-      to the input above and hit enter.
-    </p>
+  <div class="container">
+    <div class="header">
+      <h1>Taskcluster Tools for Firefox Translations</h1>
+      <p>
+        The following are a list of Taskcluster tools for Firefox translations, but they
+        could be useful for other Taskcluster projects.
+      </p>
+    </div>
+    <div class="links">
+      <div>
+        <a href="src/benchmark">Benchmark Performance</a>
+        <p>Run a translations performance benchmark</p>
+      </div>
+      <div>
+        <a href="src/cost">Cost Estimator</a>
+        <p>Estimate the cost of training runs</p>
+      </div>
+      <div>
+        <a href="src/graphs">Graphs</a>
+        <p>Get some live graphs of training</p>
+      </div>
+      <div>
+        <a href="src/models">Models</a>
+        <p>View the currently released Firefox translations models</p>
+      </div>
+      <div>
+        <a href="src/training">Training Dashboard</a>
+        <p>Track multiple training runs</p>
+      </div>
+      <div>
+        <a href="src/visualizer">Visualizer</a>
+        <p>Visualize a training graph using a force directed graph</p>
+      </div>
+    </div>
   </div>
-  <div id="graph"></div>
-  <div id="controls">
-    <div>
-      <input type="text" id="server" placeholder="TaskCluster Server">
-    </div>
-    <div>
-      <input type="text" id="taskGroup" placeholder="Add a Task Group ID">
-    </div>
-    <div>
-      <input type="checkbox" id="mergeChunks">
-      <label for="mergeChunks">Merge chunks</label>
-    </div>
-    <div>
-      <input type="checkbox" id="fetchDependentTasks">
-      <label for="fetchDependentTasks">Fetch dependent tasks</label>
-    </div>
-    <div>
-      <button type="button" id="profiler">Open in Profiler</button>
-    </div>
-  </div>
-  <script type="module" src="src/script.mjs"></script>
 </body>
 </html>

@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Cost Estimator</title>
-  <link rel="stylesheet" href="src/cost/cost.css">
+  <link rel="stylesheet" href="./cost.css">
 </head>
 <body>
   <div id="info">
@@ -31,9 +31,6 @@
       <label for="fetchDependentTasks">Fetch dependent tasks</label>
     </div>
   </div>
-  <p id="infoMessage">
-    Add a taskgroup and estimate a training run cost.
-  </p>
   <div id="taskGroups">
     <table>
       <thead>
@@ -63,6 +60,9 @@
       </div>
     </div>
   </div>
+  <p id="infoMessage">
+    Add a taskgroup and estimate a training run cost.
+  </p>
   <div id="error"></div>
   <div id="costBreakdown">
     <h2>Total Cost Estimates</h2>
@@ -103,6 +103,6 @@
       </tbody>
     </table>
   </div>
-  <script type="module" src="src/cost/cost.mjs"></script>
+  <script type="module" src="./cost.mjs"></script>
 </body>
 </html>

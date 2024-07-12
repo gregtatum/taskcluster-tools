@@ -223,6 +223,7 @@ function buildTaskGroupRow(taskGroupId, taskGroupName, insertBefore) {
       viewTask(taskGroupId).catch((error) => {
         updateInfoMessage('Error viewing tasks: ' + error);
       });
+      input.focus();
     });
     controls.appendChild(viewTasks);
   }

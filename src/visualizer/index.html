@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Task Visualization</title>
+  <script src="assets/d3.v7.min.js"></script>
+  <script src="assets/dat/dat.gui.min.js"></script>
+  <link rel="stylesheet" href="assets/dat/dat.gui.css">
+  <link rel="stylesheet" href="src/style.css">
+</head>
+<body>
+  <div id="info">
+    <h2>Taskgraph Visualizer</h2>
+    <p id="info-message">
+      Visualize a <a href="https://firefox-ci-tc.services.mozilla.com/">taskgraph</a>
+      using a force directed graph. Add a a task group id, like "PuI6mYZPTUqAfyZMTgeUng"
+      to the input above and hit enter.
+    </p>
+  </div>
+  <div id="graph"></div>
+  <div id="controls">
+    <div>
+      <input type="text" id="server" placeholder="TaskCluster Server">
+    </div>
+    <div>
+      <input type="text" id="taskGroup" placeholder="Add a Task Group ID">
+    </div>
+    <div>
+      <input type="checkbox" id="mergeChunks">
+      <label for="mergeChunks">Merge chunks</label>
+    </div>
+    <div>
+      <input type="checkbox" id="fetchDependentTasks">
+      <label for="fetchDependentTasks">Fetch dependent tasks</label>
+    </div>
+    <div>
+      <button type="button" id="profiler">Open in Profiler</button>
+    </div>
+  </div>
+  <script type="module" src="src/script.mjs"></script>
+</body>
+</html>
