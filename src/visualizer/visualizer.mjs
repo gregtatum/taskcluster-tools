@@ -5,8 +5,8 @@ import {
   getTasks,
   isTaskGroupIdValid,
   taskGraphToTasks,
-} from './taskcluster.mjs';
-import { getProfile } from './profiler.mjs';
+} from '../taskcluster.mjs';
+import { getProfile } from '../profiler.mjs';
 import {
   asAny,
   encodeUintArrayForUrlComponent,
@@ -14,7 +14,7 @@ import {
   exposeAsGlobal,
   getServer,
   getElement,
-} from './utils.mjs';
+} from '../utils.mjs';
 
 // Work around ts(2686)
 //   > 'd3' refers to a UMD global, but the current file is a module.
