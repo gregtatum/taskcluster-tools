@@ -400,27 +400,27 @@ async function _getCometScores() {
   return await response.json();
 }
 
-/**
- * @param {EvalResults} cometResults
- * @param {string} langPair
- * @return {number}
- */
-function getAverageGoogleCometScore(cometResults, langPair) {
-  let googleScore = 0;
-  let googleScoreCount = 0;
-  if (cometResults[langPair]) {
-    for (const evals of Object.values(cometResults[langPair])) {
-      if (evals['google']) {
-        googleScore += evals['google'];
-        googleScoreCount++;
-      }
-    }
-    if (googleScoreCount) {
-      googleScore /= googleScoreCount;
-    }
-  }
-  return googleScore;
-}
+// /**
+//  * @param {EvalResults} cometResults
+//  * @param {string} langPair
+//  * @return {number}
+//  */
+// function getAverageGoogleCometScore(cometResults, langPair) {
+//   let googleScore = 0;
+//   let googleScoreCount = 0;
+//   if (cometResults[langPair]) {
+//     for (const evals of Object.values(cometResults[langPair])) {
+//       if (evals['google']) {
+//         googleScore += evals['google'];
+//         googleScoreCount++;
+//       }
+//     }
+//     if (googleScoreCount) {
+//       googleScore /= googleScoreCount;
+//     }
+//   }
+//   return googleScore;
+// }
 
 /**
  * Update a TD with the relevant score information, and title text.
@@ -432,8 +432,8 @@ function getAverageGoogleCometScore(cometResults, langPair) {
  */
 async function updateCometTD(td, langPair, score, taskId) {
   const cometResults = await getCometScores();
-  // const googleScore = cometResults[langPair]?.['flores-test']?.['google'] ?? 0;
-  const googleScore = getAverageGoogleCometScore(cometResults, langPair);
+  const googleScore = cometResults[langPair]?.['flores-test']?.['google'] ?? 0;
+  // const googleScore = getAverageGoogleCometScore(cometResults, langPair);
   const percentage = 100 * (1 - googleScore / score);
   const sign = percentage >= 0 ? '+' : '';
   const percentageDisplay = `${sign}${percentage.toFixed(2)}%`;
