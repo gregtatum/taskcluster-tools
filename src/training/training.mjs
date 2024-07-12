@@ -1,4 +1,4 @@
-import { exposeAsGlobal } from '../utils.mjs';
+import { exposeAsGlobal, getElement } from '../utils.mjs';
 import { isTaskGroupIdValid } from '../taskcluster.mjs';
 
 const server = 'https://firefox-ci-tc.services.mozilla.com';
@@ -17,20 +17,6 @@ const elements = {
 const taskGroups = [];
 
 exposeAsGlobal('taskGroups', taskGroups);
-
-/**
- * Gets an element and throws if it doesn't exists.
- *
- * @param {string} id
- * @returns {HTMLElement}
- */
-function getElement(id) {
-  const el = document.getElementById(id);
-  if (!el) {
-    throw new Error('Could not find element by id: ' + id);
-  }
-  return el;
-}
 
 document.addEventListener('DOMContentLoaded', () => {
   main().catch((error) => {

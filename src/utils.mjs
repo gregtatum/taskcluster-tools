@@ -141,3 +141,17 @@ export function exposeAsGlobal(key, value) {
   console.log(key, value);
   asAny(window)[key] = value;
 }
+
+/**
+ * Gets an element and throws if it doesn't exists.
+ *
+ * @param {string} id
+ * @returns {HTMLElement}
+ */
+export function getElement(id) {
+  const el = document.getElementById(id);
+  if (!el) {
+    throw new Error('Could not find element by id: ' + id);
+  }
+  return el;
+}

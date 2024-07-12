@@ -1,0 +1,69 @@
+:root {
+  font-family: sans-serif;
+  overflow-x: hidden;
+}
+
+input[type=text] {
+  width: 300px;
+  padding: 5px;
+  border-radius: 2px;
+  border: 1px solid #aaa;
+}
+
+#controls > * {
+  margin: 1em 0;
+}
+
+#costBreakdown {
+  display: none;
+}
+
+table {
+  border-collapse: collapse;
+  border-style: hidden;
+  margin-bottom: .25rem;
+  margin-top: .25rem;
+  border-radius: 9px;
+  overflow: hidden;
+  box-shadow: 0 0 0 1px #666;
+}
+
+th {
+  background-color: #aaa;
+}
+
+td, th {
+  border: 0.9px solid #c6c6c6;
+  padding: 0.45rem 0.85rem;
+}
+
+#error {
+  display: none;
+}
+
+.taskGroupControls {
+  display: flex;
+  gap: 0.5em;
+}
+
+#taskGroups {
+  display: none; /* flex */
+}
+
+#taskGroupTasks {
+  margin-left: 10px;
+  flex: 1;
+  position: relative;
+  min-height: 500px;
+  display: none;
+
+  & div {
+    position: absolute;
+    inset: 0;
+    overflow: auto;
+  }
+
+  & table {
+    margin: 4px;
+  }
+}

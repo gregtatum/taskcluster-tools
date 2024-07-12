@@ -1,5 +1,11 @@
 import { getLiveLog, getTasks, isTaskGroupIdValid } from '../taskcluster.mjs';
-import { asAny, ensureExists, exposeAsGlobal, getServer } from '../utils.mjs';
+import {
+  asAny,
+  ensureExists,
+  exposeAsGlobal,
+  getServer,
+  getElement,
+} from '../utils.mjs';
 
 // Work around ts(2686)
 //   > 'd3' refers to a UMD global, but the current file is a module.
@@ -26,18 +32,6 @@ init().catch((error) => {
     'Failed to fetch the task. See the console for more details.';
   console.log(error);
 });
-
-/**
- * @param {string} id
- * @returns {HTMLElement}
- */
-function getElement(id) {
-  const element = document.getElementById(id);
-  if (!element) {
-    throw new Error('Could not find element ' + id);
-  }
-  return element;
-}
 
 function setupHandlers() {
   elements.taskGroup.value = getTaskGroupIds().join(',');

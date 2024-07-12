@@ -13,6 +13,7 @@ import {
   ensureExists,
   exposeAsGlobal,
   getServer,
+  getElement,
 } from './utils.mjs';
 
 // Work around ts(2686)
@@ -346,18 +347,6 @@ function getWallTime(timeRangesWithNulls) {
     wallTime += end - start;
   }
   return wallTime;
-}
-
-/**
- * @param {string} id
- * @returns {HTMLElement}
- */
-function getElement(id) {
-  const element = document.getElementById(id);
-  if (!element) {
-    throw new Error('Could not find element ' + id);
-  }
-  return element;
 }
 
 /**

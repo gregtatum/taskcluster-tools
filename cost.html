@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cost Estimator</title>
+  <link rel="stylesheet" href="src/cost/cost.css">
+</head>
+<body>
+  <div id="info">
+    <h2>Training Cost Estimator</h2>
+  </div>
+  <div id="controls">
+    <div>
+      <input type="text" id="taskGroup" placeholder="Add a Task Group ID">
+    </div>
+    <div>
+      <input type="checkbox" id="fetchDependentTasks">
+      <label for="fetchDependentTasks">Fetch dependent tasks</label>
+    </div>
+  </div>
+  <p id="infoMessage">
+    Add a taskgroup and estimate a training run cost.
+  </p>
+  <div id="taskGroups">
+    <table>
+      <thead>
+        <tr>
+          <th>Task Group</th>
+          <th>Label</th>
+          <th>Controls</th>
+        </tr>
+      </thead>
+      <tbody id="taskGroupList">
+        <!-- insert task groups here -->
+      </tbody>
+    </table>
+    <div id="taskGroupTasks">
+      <div> <!-- scroller -->
+        <table>
+          <thead>
+            <tr>
+              <th>Task</th>
+              <th>State</th>
+            </tr>
+          </thead>
+          <tbody id="taskGroupTasksBody">
+            <!-- populate tasks on click -->
+          </body>
+        </table>
+      </div>
+    </div>
+  </div>
+  <div id="error"></div>
+  <div id="costBreakdown">
+    <h2>Totals</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Label</th>
+          <th>Cost</th>
+          <th>Compute Time</th>
+
+          <th>Completed</th>
+          <th>Running</th>
+          <th>Failed</th>
+          <th>Exception</th>
+        </tr>
+      </thead>
+      <tbody id="costTotals">
+        <!-- insert rows here -->
+      </tbody>
+    </table>
+
+    <h2>Breakdown Estimates</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Label</th>
+          <th>Cost</th>
+          <th>Compute Time</th>
+
+          <th>Completed</th>
+          <th>Running</th>
+          <th>Failed</th>
+          <th>Exception</th>
+        </tr>
+      </thead>
+      <tbody id="breakdownCosts">
+        <!-- insert rows here -->
+      </tbody>
+    </table>
+  </div>
+  <script type="module" src="src/cost/cost.mjs"></script>
+</body>
+</html>
