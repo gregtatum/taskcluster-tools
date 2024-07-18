@@ -14,6 +14,7 @@
     <div>
       <input type="text" id="taskGroup" placeholder="Add a Task Group ID">
     </div>
+    <a href="https://docs.google.com/spreadsheets/d/1-mn60Kwp-IUJ99XfiUkxYv4DX-H6CQDwIUV4WnaykJk/edit#gid=118509819">Cost Estimates</a>
     <div>
       <input type="number" id="costPreemptibleGPU" />
       <label for="costPreemptibleGPU">$/hr gpu (preemptible)</label>
@@ -65,9 +66,12 @@
   </p>
   <div id="error"></div>
   <div id="costBreakdown">
-    <h2>Total Cost Estimates</h2>
     <table>
+
       <thead>
+        <tr>
+          <th colspan="7"><h2>Total Cost Estimates</h2></th>
+        </tr>
         <tr>
           <th>Label</th>
           <th>Cost</th>
@@ -82,11 +86,11 @@
       <tbody id="costTotals">
         <!-- insert rows here -->
       </tbody>
-    </table>
 
-    <h2>Breakdown Estimates</h2>
-    <table>
       <thead>
+        <tr>
+          <th colspan="7"><h2>Breakdown Estimates</h2></th>
+        </tr>
         <tr>
           <th>Label</th>
           <th>Cost</th>
@@ -101,8 +105,11 @@
       <tbody id="breakdownCosts">
         <!-- insert rows here -->
       </tbody>
+
     </table>
-  </div>
+
+  <div id="chart"></div>
+  <script src="../../assets/d3.v7.min.js"></script>
   <script type="module" src="./cost.mjs"></script>
 </body>
 </html>

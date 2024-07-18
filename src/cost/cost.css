@@ -26,15 +26,20 @@ table {
   border-radius: 9px;
   overflow: hidden;
   box-shadow: 0 0 0 1px #666;
-}
-
-th {
-  background-color: #aaa;
+  margin: 15px;
 }
 
 td, th {
-  border: 0.9px solid #c6c6c6;
   padding: 0.45rem 0.85rem;
+}
+
+td {
+  border: 1px solid #c6c6c6;
+}
+
+th {
+  border: 1px solid #333;
+  background-color: #ddd;
 }
 
 #error {
@@ -65,6 +70,8 @@ td, th {
     position: absolute;
     inset: 0;
     overflow: auto;
+    border: 1px solid #d3d3d3;
+    border-radius: 7px;
   }
 
   & table {
@@ -74,4 +81,9 @@ td, th {
 
 body {
   margin-bottom: 5em;
+}
+
+thead h2 {
+  margin: 2px;
+  text-align: center;
 }

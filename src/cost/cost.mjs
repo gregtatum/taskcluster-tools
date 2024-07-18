@@ -6,6 +6,11 @@ import {
 import { exposeAsGlobal, getElement } from '../utils.mjs';
 const server = 'https://firefox-ci-tc.services.mozilla.com';
 
+// Work around ts(2686)
+//   > 'd3' refers to a UMD global, but the current file is a module.
+//   > Consider adding an import instead.
+const d3 = window.d3;
+
 const elements = {
   info: getElement('info'),
   infoMessage: getElement('infoMessage'),
@@ -313,6 +318,9 @@ async function computeCost() {
   const taskGroups = await getVisibleTaskGroup();
   const { allCosts, breakdownCosts } = getCosts(taskGroups);
   elements.costBreakdown.style.display = 'block';
+  console.log(`!!! allCosts`, allCosts);
+  console.log(`!!! allCosts`, breakdownCosts);
+  buildPieChart(breakdownCosts);
 
   for (const { tbody, costs } of [
     { tbody: elements.costTotals, costs: allCosts },
@@ -843,4 +851,166 @@ function getTaskTimeRanges(taskGroups, filterFn = () => true) {
 
   // @ts-ignore
   return timeRangeOrNull.filter((timeRange) => timeRange);
+}
+
+/**
+ * @param {TimeCostBreakdown[]} costs
+ */
+function buildPieChart(costs) {
+  // Set the dimensions and margins of the graph
+  const width = 600;
+  const height = 600;
+  const margin = 80;
+  const legendWidth = 400;
+  const labelSpacing = 40;
+
+  // Sort the costs by time.
+  costs = [...costs];
+  costs.sort((a, b) => b.cost - a.cost);
+
+  // Append the svg object to the div called 'chart'
+  const svg = d3
+    .select('#chart')
+    .append('svg')
+    .attr('width', width + legendWidth)
+    .attr('height', height);
+
+  // Set the color scale
+  const color = d3
+    .scaleOrdinal()
+    .domain(costs.map((d) => d.description))
+    .range(d3.schemeSet2);
+
+  const tooltip = d3
+    .select('body')
+    .append('div')
+    .style('position', 'absolute')
+    .style('background', 'white')
+    .style('padding', '5px')
+    .style('border', '1px solid black')
+    .style('border-radius', '5px')
+    .style('pointer-events', 'none')
+    .style('opacity', 0);
+
+  {
+    // Build the pie chart.
+
+    // Compute the position of each group on the pie
+    // @ts-ignore
+    const pie = d3.pie().value((d) => d.cost);
+    // @ts-ignore
+    const pieData = pie(costs);
+    const g = svg
+      .append('g')
+      .attr('transform', `translate(${width / 2},${height / 2})`);
+
+    const outerRadius = Math.min(width, height) / 2 - margin;
+    const innerRadius = outerRadius * 0.2;
+
+    /**
+     * @typedef {Object} PieData
+     * @property {TimeCostBreakdown} data
+     * @property {number} value
+     * @property {number} index
+     * @property {number} startAngle
+     * @property {number} endAngle
+     * @property {number} padAngle
+     */
+
+    /**
+     * D3's TypeScript types don't really work. This coerces the `d` value to the proper
+     * type that is passed.
+     * @type {(d: any) => PieData}
+     */
+    const asPieData = (d) => d;
+
+    const arcGenerator = d3
+      .arc()
+      .innerRadius(innerRadius)
+      .outerRadius(outerRadius)
+      .cornerRadius(5)
+      .padAngle(0.015);
+
+    // Build the pie chart
+    g.selectAll('whatever')
+      .data(pieData)
+      .join('path')
+      // @ts-ignore
+      .attr('d', arcGenerator)
+      .attr('fill', (d) => color(asPieData(d).data.description))
+      .attr('stroke', '#000a')
+      .style('stroke-width', '2px')
+      .style('opacity', 0.7)
+      .on('mouseover', (_event, d) => {
+        const task = asPieData(d).data.description;
+        const cost = formatCost(asPieData(d).data.cost);
+        tooltip
+          //
+          .style('opacity', 1)
+          .html(`Task: ${task}<br><br>Cost: ${cost}`);
+      })
+      .on('mousemove', function (_event) {
+        // Coerce the type.
+        /** @type {MouseEvent} */
+        const event = /** @type {any} */ (_event);
+
+        tooltip
+          .style('left', event.pageX + 10 + 'px')
+          .style('top', event.pageY - 15 + 'px');
+      })
+      .on('mouseout', function () {
+        tooltip.style('opacity', 0);
+      });
+
+    // Add labels
+    g.selectAll('whatever')
+      .data(pieData)
+      .join('text')
+      .text((d) => formatCost(asPieData(d).data.cost))
+      .attr('title', (d) => asPieData(d).data.description)
+      .attr('transform', (d) => {
+        const [x, y] = d3
+          .arc()
+          .innerRadius(0)
+          .outerRadius(outerRadius * 2 + labelSpacing)
+          // @ts-ignore
+          .centroid(d);
+        return `translate(${x},${y})`;
+      })
+      .style('text-anchor', (d) =>
+        (d.endAngle + d.startAngle) / 2 > Math.PI ? 'end' : 'start',
+      )
+      .style('font-size', 12);
+  }
+  {
+    // Add legend
+    const g = svg
+      .append('g')
+      .attr('transform', `translate(${width + margin}, ${margin})`);
+
+    const items = g
+      .selectAll('legend-item')
+      .data(costs)
+      .enter()
+      .append('g')
+      .attr('transform', (_d, i) => `translate(0, ${i * 20})`);
+
+    // Legend colored squares.
+    items
+      .append('rect')
+      .attr('x', 0)
+      .attr('y', 0)
+      .attr('width', 10)
+      .attr('height', 10)
+      .attr('fill', (d) => color(d.description));
+
+    // Legend text.
+    items
+      .append('text')
+      .attr('x', 20)
+      .attr('y', 10)
+      .text((d) => `${formatCost(d.cost)} - ${d.description}`)
+      .style('font-size', 12)
+      .style('text-anchor', 'start');
+  }
 }
