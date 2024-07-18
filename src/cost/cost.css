@@ -87,3 +87,12 @@ thead h2 {
   margin: 2px;
   text-align: center;
 }
+
+#label {
+  font-size: 1em;
+  padding: 0.5em;
+  border: 1px solid #aaa;
+  border-radius: 5px;
+  width: 800px;
+  margin: 15px;
+}
