@@ -23,6 +23,7 @@ const elements = {
   taskGroupList: /** @type {HTMLTableElement} */ (getElement('taskGroupList')),
   taskGroupTasks: getElement('taskGroupTasks'),
   taskGroupTasksBody: getElement('taskGroupTasksBody'),
+  label: /** @type {HTMLInputElement} */ (getElement('label')),
   error: getElement('error'),
   costBreakdown: getElement('costBreakdown'),
   costTotals: /** @type {HTMLTableElement} */ (getElement('costTotals')),
@@ -166,6 +167,16 @@ function setupHandlers() {
     );
     elements.costCpu.addEventListener('change', handleCostChangeFn('costCpu'));
   }
+
+  elements.label.value = getLabel();
+  elements.label.addEventListener('keydown', (event) => {
+    if (event.key === 'Enter') {
+      setLabel(elements.label.value);
+    }
+  });
+  elements.label.addEventListener('blur', () => {
+    setLabel(elements.label.value);
+  });
 }
 
 /**
@@ -318,8 +329,7 @@ async function computeCost() {
   const taskGroups = await getVisibleTaskGroup();
   const { allCosts, breakdownCosts } = getCosts(taskGroups);
   elements.costBreakdown.style.display = 'block';
-  console.log(`!!! allCosts`, allCosts);
-  console.log(`!!! allCosts`, breakdownCosts);
+
   buildPieChart(breakdownCosts);
 
   for (const { tbody, costs } of [
@@ -368,6 +378,25 @@ function setTaskgroupName(id, name) {
   names[id] = name;
   const urlParams = new URLSearchParams(window.location.search);
   urlParams.set('taskGroupNames', JSON.stringify(names));
+  // There is no reason to refresh the page here.
+  replaceLocation(urlParams);
+}
+
+/**
+ * @returns {string}
+ */
+function getLabel() {
+  const urlParams = new URLSearchParams(window.location.search);
+  // Extract the taskGroupId parameter
+  return urlParams.get('label') ?? '';
+}
+
+/**
+ * @param {string} label
+ */
+function setLabel(label) {
+  const urlParams = new URLSearchParams(window.location.search);
+  urlParams.set('label', label);
   // There is no reason to refresh the page here.
   replaceLocation(urlParams);
 }
