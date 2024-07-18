@@ -197,8 +197,11 @@ function buildTaskGroupRow(taskGroupId, taskGroupName, insertBefore) {
 
   {
     const div = document.createElement('div');
+    if (isDependent) {
+      div.innerText = '⮑ ';
+    }
     if (isIgnored) {
-      div.innerText = '(ignored) ';
+      div.innerText += '(ignored) ';
     }
     const a = document.createElement('a');
     a.innerText = taskGroupId;
