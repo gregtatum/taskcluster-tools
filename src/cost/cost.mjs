@@ -80,6 +80,16 @@ async function main() {
     addDependentTaskGroups(taskGroups);
     computeCost();
 
+    if (getFetchDependentTasks()) {
+      // Don't re-fetch dependents, as we will likely fetch new ones, and it's quicker
+      // not to look it up again.
+      const urlParams = new URLSearchParams(window.location.search);
+      const ids = taskGroups.map((taskGroup) => taskGroup.taskGroupId);
+      urlParams.set('taskGroupIds', [...new Set(ids)].join(','));
+      urlParams.set('fetchDependentTasks', 'false');
+      replaceLocation(urlParams);
+    }
+
     return taskGroups;
   });
 }
@@ -135,6 +145,17 @@ function setupHandlers() {
       const input = /** @type {any} */ (event.target);
       urlParams.set(key, input.value);
       replaceLocation(urlParams);
+
+      localStorage.setItem(
+        'costPreemptibleGPU',
+        elements.costPreemptibleGPU.value,
+      );
+      localStorage.setItem(
+        'costNonPreemptibleGPU',
+        elements.costNonPreemptibleGPU.value,
+      );
+      localStorage.setItem('costCpu', elements.costCpu.value);
+
       computeCost();
     };
   }
@@ -144,15 +165,19 @@ function setupHandlers() {
     const urlParams = new URLSearchParams(window.location.search);
 
     // Initialize the values from the urlParams.
-    const costNonPreemptibleGPU = urlParams.get('costNonPreemptibleGPU');
+    const costNonPreemptibleGPU =
+      urlParams.get('costNonPreemptibleGPU') ||
+      localStorage.getItem('costNonPreemptibleGPU');
     if (costNonPreemptibleGPU) {
       elements.costNonPreemptibleGPU.value = costNonPreemptibleGPU;
     }
-    const costPreemptibleGPU = urlParams.get('costPreemptibleGPU');
+    const costPreemptibleGPU =
+      urlParams.get('costPreemptibleGPU') ||
+      localStorage.getItem('costPreemptibleGPU');
     if (costPreemptibleGPU) {
       elements.costPreemptibleGPU.value = costPreemptibleGPU;
     }
-    const costCpu = urlParams.get('costCpu');
+    const costCpu = urlParams.get('costCpu') || localStorage.getItem('costCpu');
     if (costCpu) {
       elements.costCpu.value = costCpu;
     }
