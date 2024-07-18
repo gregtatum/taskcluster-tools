@@ -900,6 +900,9 @@ function buildPieChart(costs) {
   costs = [...costs];
   costs.sort((a, b) => b.cost - a.cost);
 
+  // Clear out any old chats
+  d3.select('#chart').html('');
+
   // Append the svg object to the div called 'chart'
   const svg = d3
     .select('#chart')
