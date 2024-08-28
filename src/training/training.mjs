@@ -834,12 +834,16 @@ async function fetchArtifact(taskId, artifactPath, returnType, cache) {
   const response = await fetch(taskUrl);
   if (returnType === 'text') {
     const text = await response.text();
-    localStorage.setItem(cacheKey, text);
+    if (cache) {
+      localStorage.setItem(cacheKey, text);
+    }
     return text;
   }
 
   const json = await response.json();
-  localStorage.setItem(cacheKey, JSON.stringify(json));
+  if (cache) {
+    localStorage.setItem(cacheKey, JSON.stringify(json));
+  }
   return json;
 }
 
