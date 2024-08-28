@@ -1,0 +1,13 @@
+:root {
+  font-family: sans-serif;
+}
+
+body {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+#error, #loading {
+  display: none;
+}

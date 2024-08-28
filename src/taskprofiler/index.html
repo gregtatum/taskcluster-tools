@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Task Profiler</title>
+</head>
+<body>
+  <script src='./taskprofiler.mjs' type="module"></script>
+  <link rel="stylesheet" href="./taskprofiler.css">
+
+  <h2>Task Profiler</h2>
+  <p style='max-width: 500px; line-height: 1.5;'>
+    Take a Taskcluster task and visualize the logs with the <a href="https://profiler.firefox.com">Firefox Profiler</a>.
+  </p>
+  <form id="form">
+    <label for="taskId">Task ID:</label>
+    <input type="text" id="taskId" />
+    <input type="submit" />
+  </form>
+
+  <p id="loading">Fetching the logs…</p>
+  <p id="error">There was an error. See the console log.</p>
+
+</body>
+</html>

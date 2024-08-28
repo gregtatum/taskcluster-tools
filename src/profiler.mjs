@@ -9,7 +9,7 @@ import { getTaskGroupTimeRanges } from './taskcluster.mjs';
 /**
  * This is taken from the profiler.
  */
-class UniqueStringArray {
+export class UniqueStringArray {
   /**
    * @type {string[]}
    */
@@ -101,7 +101,7 @@ class UniqueStringArray {
  * Returns an empty thread for the profiler.
  * See: https://github.com/firefox-devtools/profiler/blob/c60370e8c34c14b773d68959622f82bdcf1701ff/src/types/profile.js#L619
  */
-function getEmptyThread() {
+export function getEmptyThread() {
   return {
     processType: 'default',
     processName: 'Taskcluster',
@@ -259,7 +259,7 @@ function getCategories() {
   ];
 }
 
-function getEmptyProfile() {
+export function getEmptyProfile() {
   return {
     meta: {
       interval: 1,
