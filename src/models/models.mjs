@@ -1,3 +1,5 @@
+import { exposeAsGlobal } from '../utils.mjs';
+
 main().catch((error) => {
   console.error(error);
   getById('error').style.display = 'block';
@@ -38,17 +40,14 @@ async function main() {
   const records = await fetchJSON(
     'https://firefox.settings.services.mozilla.com/v1/buckets/main/collections/translations-models/records',
   );
-  // @ts-ignore
-  window.records = records.data;
-  console.log('window.records', records.data);
+  exposeAsGlobal('records', records.data);
 
   /** @type {EvalResults} */
   const cometResults = await fetchJSON(
     'https://raw.githubusercontent.com/mozilla/firefox-translations-models/main/evaluation/comet-results.json',
   );
-  // @ts-ignore
-  window.records = records.data;
-  console.log('window.records', records.data);
+
+  logCometResults(cometResults);
 
   /**
    * @typedef {Object} ModelEntry
@@ -61,9 +60,7 @@ async function main() {
   /** @type {Map<string, ModelEntry>} */
   const modelsMap = new Map();
   const models = records.data.filter((record) => record.fileType === 'model');
-  // @ts-ignore
-  window.models = models;
-  console.log('window.models', models);
+  exposeAsGlobal('models', models);
 
   const dn = new Intl.DisplayNames('en', { type: 'language' });
 
@@ -155,9 +152,9 @@ function addToRow(td, pair, records, cometResults, model) {
 
   const hasEvals = bergamotComet && googleComet;
 
-  const percentage = 100 * (1 - googleComet / bergamotComet);
-  const sign = percentage >= 0 ? '+' : '';
-  const percentageDisplay = hasEvals ? `${sign}${percentage.toFixed(2)}%` : '';
+  const difference = bergamotComet - googleComet;
+  const sign = difference >= 0 ? '+' : '';
+  const percentageDisplay = hasEvals ? `${sign}${difference.toFixed(4)}` : '';
 
   const avgPercentage = 100 * (1 - googleCometAvg / bergamotCometAvg);
   const avgSign = avgPercentage >= 0 ? '+' : '';
@@ -166,7 +163,6 @@ function addToRow(td, pair, records, cometResults, model) {
     : '';
 
   const el = td(percentageDisplay);
-  console.log(`!!! pair`, pair, googleComet);
   if (hasEvals) {
     let shippable = 'Shippable';
     el.style.color = '#fff';
@@ -361,3 +357,31 @@ assertComparison('1.0', '1.0a1', aGreaterThanB);
 assertComparison('1.0', '2.0', aLessThanB);
 assertComparison('1.0', '1.1', aLessThanB);
 assertComparison('1.0a', '1.1', aLessThanB);
+
+/**
+ * @param {EvalResults} cometResults
+ */
+function logCometResults(cometResults) {
+  let tsv = '';
+
+  /** @type {Array<unknown[]>} */
+  const rows = [];
+
+  addRow(['Lang Pair', 'From', 'To', 'Google', 'Bergamot']);
+
+  /**
+   * @param {unknown[]} row
+   */
+  function addRow(row) {
+    rows.push(row);
+    tsv += row.join('\t') + '\n';
+  }
+
+  for (const [langPair, evaluation] of Object.entries(cometResults)) {
+    const flores = evaluation['flores-dev'];
+    const [fromLang, toLang] = langPair.split('-');
+    addRow([langPair, fromLang, toLang, flores.google, flores.bergamot]);
+  }
+
+  console.log(tsv);
+}
