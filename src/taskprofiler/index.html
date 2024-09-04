@@ -8,18 +8,31 @@
   <script src='./taskprofiler.mjs' type="module"></script>
   <link rel="stylesheet" href="./taskprofiler.css">
 
-  <h2>Task Profiler</h2>
-  <p style='max-width: 500px; line-height: 1.5;'>
-    Take a Taskcluster task and visualize the logs with the <a href="https://profiler.firefox.com">Firefox Profiler</a>.
-  </p>
-  <form id="form">
-    <label for="taskId">Task ID:</label>
-    <input type="text" id="taskId" />
-    <input type="submit" />
-  </form>
+  <div class="wrapper">
+    <h2>Task Profiler</h2>
+    <p style='max-width: 500px; line-height: 1.5;'>
+      Take a Taskcluster task and visualize the logs with the <a href="https://profiler.firefox.com">Firefox Profiler</a>.
+    </p>
 
-  <p id="loading">Fetching the logs…</p>
-  <p id="error">There was an error. See the console log.</p>
+    <form id="formTask">
+      <div><label for="taskId">Task ID:</label></div>
+      <input type="text" id="taskId" placeholder="Paste a Task ID" />
+      <input type="submit" value="Open" />
+    </form>
 
+    <form id="formTaskGroup">
+      <div><label for="taskGroup">Task Group:</label></div>
+      <input type="text" id="taskGroup" placeholder="Paste a Task Group ID" />
+      <input type="submit" value="Open" />
+
+      <div>
+        <input type="checkbox" id="fetchDependentTasks">
+        <label for="fetchDependentTasks">Fetch dependent task groups</label>
+      </div>
+    </form>
+
+    <p id="info"></p>
+    <p id="error">There was an error. See the console log.</p>
+  </div>
 </body>
 </html>

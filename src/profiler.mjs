@@ -310,6 +310,11 @@ function getTaskSchema() {
         searchable: true,
       },
       {
+        key: 'taskId',
+        label: 'Task ID',
+        format: 'string',
+      },
+      {
         key: 'owner',
         label: 'Owner',
         format: 'string',
@@ -359,6 +364,11 @@ function getTaskSchema() {
       {
         key: 'liveLog',
         label: 'Live Log',
+        format: 'url',
+      },
+      {
+        key: 'taskProfile',
+        label: 'Task Profile',
         format: 'url',
       },
     ],
@@ -566,6 +576,7 @@ export function getProfile(taskGroups, url) {
           const taskName = task.task.metadata.name;
           const retries = task.task.retries;
           const runId = run.runId;
+          const taskId = task.status.taskId;
           const name =
             run.state === 'completed' && run.runId === 0 && retries > 1
               ? taskName
@@ -577,6 +588,7 @@ export function getProfile(taskGroups, url) {
               profile.meta.startTime + profileStartTime,
             ).toLocaleTimeString(),
             name,
+            taskId,
             owner: task.task.metadata.owner,
             description: task.task.metadata.description,
             source: task.task.metadata.source,
@@ -584,9 +596,10 @@ export function getProfile(taskGroups, url) {
             state: run.state,
             reasonCreated: run.reasonCreated,
             reasonResolved: run.reasonResolved,
-            taskURL: `https://${url.host}/tasks/${task.status.taskId}/runs/${runId}`,
+            taskURL: `https://${url.host}/tasks/${taskId}/runs/${runId}`,
             taskGroup: `https://${url.host}/tasks/groups/${task.task.taskGroupId}`,
-            liveLog: `https://${url.host}/tasks/${task.status.taskId}/runs/${runId}/logs/live/public/logs/live.log`,
+            liveLog: `https://${url.host}/tasks/${taskId}/runs/${runId}/logs/live/public/logs/live.log`,
+            taskProfile: `https://gregtatum.github.io/taskcluster-tools/src/taskprofiler/?taskId=${taskId}`,
           });
 
           markers.length++;

@@ -6,8 +6,30 @@ body {
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: center;
+  position: absolute;
+  inset: 0;
+  line-height: 1.5;
 }
 
 #error, #loading {
   display: none;
+}
+
+input[type='text'] {
+  padding: 5px;
+  margin-inline-end: 9px;
+  width: 400px;
+}
+
+.wrapper {
+  max-width: 500px;
+}
+
+form {
+  margin: 30px 0;
+}
+
+#fetchDependentTasks {
+  margin-block: 16px;
 }

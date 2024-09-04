@@ -1,15 +1,27 @@
 // @ts-check
-import { asAny, getElement } from '../utils.mjs';
+import {
+  asAny,
+  encodeUintArrayForUrlComponent,
+  getElement,
+  getServer,
+} from '../utils.mjs';
 import {
   getEmptyProfile,
   getEmptyThread,
   UniqueStringArray,
+  getProfile,
 } from '../profiler.mjs';
+import { getTasks } from '../taskcluster.mjs';
 
 const elements = {
-  form: /** @type {HTMLFormElement} */ (getElement('form')),
+  formTask: /** @type {HTMLFormElement} */ (getElement('formTask')),
+  formTaskGroup: /** @type {HTMLFormElement} */ (getElement('formTaskGroup')),
+  fetchDependentTasks: /** @type {HTMLInputElement} */ (
+    getElement('fetchDependentTasks')
+  ),
   taskId: /** @type {HTMLInputElement} */ (getElement('taskId')),
-  loading: /** @type {HTMLDivElement} */ (getElement('loading')),
+  taskGroup: /** @type {HTMLInputElement} */ (getElement('taskGroup')),
+  info: /** @type {HTMLDivElement} */ (getElement('info')),
   error: /** @type {HTMLDivElement} */ (getElement('error')),
 };
 
@@ -162,6 +174,16 @@ function getTaskSchema() {
         label: 'Time',
         format: 'time',
       },
+      {
+        key: 'taskGroupURL',
+        label: 'Task Group URL',
+        format: 'url',
+      },
+      {
+        key: 'taskGroupProfile',
+        label: 'Task Group Profile',
+        format: 'url',
+      },
     ],
   };
 }
@@ -170,9 +192,10 @@ function getTaskSchema() {
  * Builds a profile from the provided log rows.
  *
  * @param {LogRow[]} logRows - The log rows to process.
+ * @param {Task} task
  * @returns {import('profiler.mjs').Profile} The generated profile.
  */
-function buildProfile(logRows) {
+function buildProfile(logRows, task) {
   const profile = getEmptyProfile();
   profile.meta.markerSchema = [getTaskSchema()];
   profile.meta.categories = getCategories();
@@ -228,9 +251,9 @@ function buildProfile(logRows) {
       message: logRow.message,
       hour: logRow.time.toISOString().substr(11, 8),
       date: logRow.time.toISOString().substr(0, 10),
-      // url: `https://${url.host}/tasks/groups/${taskGroup.taskGroupId}`,
+      taskGroupURL: `${getServer()}/tasks/groups/${task.taskGroupId}`,
+      taskGroupProfile: `https://gregtatum.github.io/taskcluster-tools/src/taskprofiler/?taskGroupId=${task.taskGroupId}`,
     });
-
     markers.length += 1;
   }
 
@@ -243,9 +266,10 @@ function buildProfile(logRows) {
  * Fetches log rows from the specified TaskCluster URL.
  *
  * @param {string} taskId - The Task ID to fetch logs for.
+ * @param {Task} task
  * @returns {Promise<import('profiler.mjs').Profile>} A promise that resolves to an array of LogRow objects.
  */
-async function fetchLogsAndBuildProfile(taskId) {
+async function fetchLogsAndBuildProfile(taskId, task) {
   const url = `https://firefoxci.taskcluster-artifacts.net/${taskId}/0/public/logs/live_backing.log`;
   const response = await fetch(url);
 
@@ -258,64 +282,159 @@ async function fetchLogsAndBuildProfile(taskId) {
 
   const logRows = readLogFile(logLines);
   fixupLogRows(logRows);
-  return buildProfile(logRows);
+  return buildProfile(logRows, task);
 }
 
 document.addEventListener('DOMContentLoaded', () => {
-  elements.form.addEventListener('submit', async (event) => {
+  {
+    const urlParams = new URLSearchParams(window.location.search);
+    const taskId = urlParams.get('taskId');
+    if (taskId) {
+      getProfileFromTaskId(taskId).catch((error) => console.error(error));
+    }
+    const taskGroupId = urlParams.get('taskGroupId');
+    if (taskGroupId) {
+      getProfileFromTaskGroup(taskGroupId).catch((error) =>
+        console.error(error),
+      );
+    }
+  }
+
+  elements.formTask.addEventListener('submit', async (event) => {
     event.preventDefault();
     const { value } = elements.taskId;
     if (!value) {
       return;
     }
-    elements.loading.style.display = 'block';
-    elements.error.style.display = 'none';
-    try {
-      const profile = await fetchLogsAndBuildProfile(value);
-      console.log(profile);
+    getProfileFromTaskId(value).catch((error) => console.error(error));
+  });
 
-      const { profilerOrigin } = asAny(window);
-
-      const profilerURL = profilerOrigin + '/from-post-message/';
-
-      const profilerWindow = window.open(profilerURL, '_blank');
-      elements.loading.style.display = 'none';
-
-      if (!profilerWindow) {
-        console.error('Failed to open the new window.');
-        return;
-      }
-
-      // Wait for the profiler page to respond that it is ready.
-      let isReady = false;
-
-      /**
-       * @param {MessageEvent} event
-       */
-      const listener = ({ data }) => {
-        if (data?.name === 'is-ready') {
-          console.log('The profiler is ready. Injecting the profile.');
-          isReady = true;
-          const message = {
-            name: 'inject-profile',
-            profile,
-          };
-          profilerWindow.postMessage(message, profilerOrigin);
-          window.removeEventListener('message', listener);
-        }
-      };
-
-      window.addEventListener('message', listener);
-      while (!isReady) {
-        await new Promise((resolve) => setTimeout(resolve, 100));
-        profilerWindow.postMessage({ name: 'is-ready' }, profilerOrigin);
-      }
-
-      window.removeEventListener('message', listener);
-    } catch (error) {
-      console.error(error);
-      elements.loading.style.display = 'none';
-      elements.error.style.display = 'block';
+  elements.formTaskGroup.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    const { value } = elements.taskGroup;
+    if (!value) {
+      return;
     }
+    getProfileFromTaskGroup(value).catch((error) => console.error(error));
   });
 });
+
+/**
+ * @param {string} message
+ */
+function updateStatusMessage(message) {
+  elements.info.innerText = message;
+}
+
+/**
+ * @param {import('../profiler.mjs').Profile} profile
+ * @param {string} params
+ */
+async function injectProfile(profile, params = '') {
+  const { profilerOrigin } = asAny(window);
+
+  const profilerURL = profilerOrigin + '/from-post-message/' + params;
+
+  const profilerWindow = window.open(profilerURL, '_blank');
+
+  if (!profilerWindow) {
+    console.error('Failed to open the new window.');
+    return;
+  }
+
+  // Wait for the profiler page to respond that it is ready.
+  let isReady = false;
+
+  /**
+   * @param {MessageEvent} event
+   */
+  const listener = ({ data }) => {
+    if (data?.name === 'is-ready') {
+      console.log('The profiler is ready. Injecting the profile.');
+      isReady = true;
+      const message = {
+        name: 'inject-profile',
+        profile,
+      };
+      profilerWindow.postMessage(message, profilerOrigin);
+      window.removeEventListener('message', listener);
+    }
+  };
+
+  window.addEventListener('message', listener);
+  while (!isReady) {
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    profilerWindow.postMessage({ name: 'is-ready' }, profilerOrigin);
+  }
+
+  window.removeEventListener('message', listener);
+}
+
+/**
+ * @param {string} taskId
+ */
+async function getProfileFromTaskId(taskId) {
+  elements.info.style.display = 'block';
+  elements.error.style.display = 'none';
+  updateStatusMessage('Fetching the logs…');
+  try {
+    const taskUrl = `${getServer()}/api/queue/v1/task/${taskId}`;
+    const response = await fetch(taskUrl);
+    /** @type {Task} */
+    const task = await response.json();
+    if (!response.ok) {
+      console.error(task);
+      return;
+    }
+
+    const profile = await fetchLogsAndBuildProfile(taskId, task);
+    console.log(profile);
+
+    await injectProfile(profile);
+  } catch (error) {
+    console.error(error);
+    elements.info.style.display = 'none';
+    elements.error.style.display = 'block';
+  }
+}
+/**
+ * @param {string} taskGroupId
+ */
+async function getProfileFromTaskGroup(taskGroupId) {
+  try {
+    updateStatusMessage('Loading');
+    elements.info.style.display = 'block';
+    elements.error.style.display = 'none';
+
+    const result = await getTasks(
+      [taskGroupId],
+      getServer(),
+      /* merge chunks */ false,
+      /* fetch dep tasks */ elements.fetchDependentTasks.checked,
+      /* merge task typed */ null,
+      updateStatusMessage,
+      /* ignored task group ids */ new Set(),
+    );
+
+    if (!result) {
+      return;
+    }
+
+    const { taskGroups } = result;
+    const profile = getProfile(taskGroups, new URL(getServer()));
+
+    const threadSelection = encodeUintArrayForUrlComponent(
+      profile.threads.map((_thread, i) => i),
+    );
+
+    // By default select all the threads.
+    const params = `?thread=${threadSelection}`;
+    await injectProfile(profile, params);
+    elements.info.style.display = 'none';
+    elements.error.style.display = 'none';
+  } catch (error) {
+    console.error(error);
+    elements.info.style.display = 'none';
+    elements.error.style.display = 'block';
+  }
+}
