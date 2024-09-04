@@ -824,6 +824,7 @@ function getHiddenTaskGroups() {
  */
 async function fetchArtifact(taskId, artifactPath, returnType, cache) {
   const taskUrl = `${server}/api/queue/v1/task/${taskId}/artifacts/${artifactPath}`;
+  console.log('Fetching', taskUrl);
   const cacheKey = `cache-artifact-${taskUrl}`;
   if (cache) {
     const cached = localStorage.getItem(cacheKey);
