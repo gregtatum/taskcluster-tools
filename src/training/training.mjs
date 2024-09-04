@@ -18,6 +18,122 @@ const taskGroups = [];
 
 exposeAsGlobal('taskGroups', taskGroups);
 
+/**
+ * LangPair to Tasks
+ *
+ * @type {Record<string, TaskAndStatus[]>}
+ */
+const allTasks = {};
+exposeAsGlobal('allTasks', allTasks);
+
+/**
+ * @param {string} url
+ */
+async function fetchJSON(url) {
+  const response = await fetch(url);
+  if (!response.ok) {
+    const error = await response.json();
+    console.error();
+    return Promise.reject(new Error(error));
+  }
+  return await response.json();
+}
+
+async function getMergedDatasertUrls() {
+  /**
+   * Map langpairs to the URLs.
+   * @type {Record<string, Set<string>>}
+   */
+  const allUrls = {};
+  for (const [langPair, tasks] of Object.entries(allTasks)) {
+    /** @type {Set<string>} */
+    const urls = new Set();
+    allUrls[langPair] = urls;
+    for (const { task, status } of tasks) {
+      const { taskId } = status;
+      if (task.metadata.name.startsWith('merge-mono')) {
+        /** @type {ArtifactsList} */
+        const { artifacts } = await fetchJSON(
+          `${server}/api/queue/v1/task/${status.taskId}/artifacts`,
+        );
+
+        for (const { name } of artifacts) {
+          if (name.startsWith('public/build/mono.')) {
+            urls.add(`${server}/api/queue/v1/task/${taskId}/artifacts/${name}`);
+          }
+        }
+      }
+
+      if (task.metadata.name.startsWith('merge-corpus')) {
+        /** @type {ArtifactsList} */
+        const { artifacts } = await fetchJSON(
+          `${server}/api/queue/v1/task/${status.taskId}/artifacts`,
+        );
+
+        for (const { name } of artifacts) {
+          if (name.startsWith('public/build/corpus.')) {
+            urls.add(`${server}/api/queue/v1/task/${taskId}/artifacts/${name}`);
+          }
+        }
+      }
+    }
+  }
+
+  /** @type {Record<string, string[]>} */
+  const allUrlsArrays = {};
+  for (const [langPair, urls] of Object.entries(allUrls)) {
+    allUrlsArrays[langPair] = [...urls];
+  }
+  return allUrlsArrays;
+}
+
+async function getDataCounts() {
+  /**
+   * Map langpairs to the URLs.
+   * @type {Record<string, Record<string, number>>}
+   */
+  const countsByLangPair = {};
+  for (const [langPair, tasks] of Object.entries(allTasks)) {
+    /** @type {Record<string, number>} */
+    const counts = {};
+
+    countsByLangPair[langPair] = counts;
+    for (const { task, status } of tasks) {
+      const { taskId } = status;
+      if (
+        (task.metadata.name.startsWith('merge-corpus') ||
+          task.metadata.name.startsWith('merge-mono')) &&
+        status.state === 'completed'
+      ) {
+        /** @type {string} */
+        const liveLog = await fetchArtifact(
+          taskId,
+          'public/logs/live.log',
+          'text',
+          false /* cache */,
+        );
+
+        const regex = /Kept (\d+) \/ \d+ = [\d.]+/m;
+        const match = liveLog.match(regex);
+        if (match) {
+          counts[task.metadata.name] = Number(match[1]);
+        } else {
+          console.error('Could not match the regex to the live log', {
+            task,
+            status,
+            liveLog,
+          });
+        }
+        console.log(`!!! countsByLangPair`, countsByLangPair);
+      }
+    }
+  }
+
+  return countsByLangPair;
+}
+
+getDataCounts();
+
 document.addEventListener('DOMContentLoaded', () => {
   main().catch((error) => {
     console.error(error);
