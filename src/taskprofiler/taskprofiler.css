@@ -12,10 +12,6 @@ body {
   line-height: 1.5;
 }
 
-#error, #loading {
-  display: none;
-}
-
 input[type='text'] {
   padding: 5px;
   margin-inline-end: 9px;
@@ -44,4 +40,12 @@ form {
   display: block;
   color: #007ce9;
   font-weight: bold;
+}
+
+#info {
+  display: none;
+  border: 1px solid #007ce9;
+  background: #d6ecff;
+  border-radius: 4px;
+  padding: 10px;
 }

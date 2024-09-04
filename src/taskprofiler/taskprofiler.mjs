@@ -23,7 +23,6 @@ const elements = {
   taskId: /** @type {HTMLInputElement} */ (getElement('taskId')),
   taskGroup: /** @type {HTMLInputElement} */ (getElement('taskGroup')),
   info: /** @type {HTMLDivElement} */ (getElement('info')),
-  error: /** @type {HTMLDivElement} */ (getElement('error')),
 };
 
 console.log('Override the profiler origin with window.profilerOrigin');
@@ -201,6 +200,10 @@ function buildProfile(logRows, task) {
   profile.meta.markerSchema = [getTaskSchema()];
   profile.meta.categories = getCategories();
 
+  const date = new Date(task.created).toLocaleDateString();
+
+  profile.meta.product = `Task ${task.metadata.name} - ${date}`;
+
   // Compute and save the profile start time.
   let profileStartTime = 0;
   for (const logRow of logRows) {
@@ -338,7 +341,12 @@ document.addEventListener('DOMContentLoaded', () => {
  * @param {string} message
  */
 function updateStatusMessage(message) {
-  elements.info.innerText = message;
+  if (message) {
+    elements.info.style.display = 'block';
+    elements.info.innerText = message;
+  } else {
+    elements.info.style.display = 'none';
+  }
 }
 
 /**
@@ -389,8 +397,6 @@ async function injectProfile(profile, params = '') {
  * @param {string} taskId
  */
 async function getProfileFromTaskId(taskId) {
-  elements.info.style.display = 'block';
-  elements.error.style.display = 'none';
   updateStatusMessage('Fetching the logs…');
   try {
     const taskUrl = `${getServer()}/api/queue/v1/task/${taskId}`;
@@ -406,10 +412,10 @@ async function getProfileFromTaskId(taskId) {
     console.log(profile);
 
     await injectProfile(profile);
+    updateStatusMessage(`Profile for task "${taskId}" was opened.`);
   } catch (error) {
     console.error(error);
-    elements.info.style.display = 'none';
-    elements.error.style.display = 'block';
+    updateStatusMessage('There was an error, see the console for more details');
   }
 }
 /**
@@ -417,9 +423,7 @@ async function getProfileFromTaskId(taskId) {
  */
 async function getProfileFromTaskGroup(taskGroupId) {
   try {
-    updateStatusMessage('Loading');
-    elements.info.style.display = 'block';
-    elements.error.style.display = 'none';
+    updateStatusMessage('Loading tasks');
 
     const result = await getTasks(
       [taskGroupId],
@@ -445,12 +449,10 @@ async function getProfileFromTaskGroup(taskGroupId) {
     // By default select all the threads.
     const params = `?thread=${threadSelection}`;
     await injectProfile(profile, params);
-    elements.info.style.display = 'none';
-    elements.error.style.display = 'none';
+    updateStatusMessage(`Profile for task group "${taskGroupId}" was opened.`);
   } catch (error) {
     console.error(error);
-    elements.info.style.display = 'none';
-    elements.error.style.display = 'block';
+    updateStatusMessage('There was an error, see the console for more details');
   }
 }
 
