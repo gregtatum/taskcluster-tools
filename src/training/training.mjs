@@ -759,6 +759,13 @@ async function buildTableRow(
   }
 
   console.log(langPair, tasks);
+  if (allTasks[langPair]) {
+    for (const task of tasks) {
+      allTasks[langPair].push(task);
+    }
+  } else {
+    allTasks[langPair] = [...tasks];
+  }
 
   /** @type {Record<TaskState, number>} */
   const stateCounts = {
