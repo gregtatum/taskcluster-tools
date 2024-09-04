@@ -19,6 +19,7 @@ const elements = {
   fetchDependentTasks: /** @type {HTMLInputElement} */ (
     getElement('fetchDependentTasks')
   ),
+  server: /** @type {HTMLInputElement} */ (getElement('server')),
   taskId: /** @type {HTMLInputElement} */ (getElement('taskId')),
   taskGroup: /** @type {HTMLInputElement} */ (getElement('taskGroup')),
   info: /** @type {HTMLDivElement} */ (getElement('info')),
@@ -300,6 +301,20 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
+  elements.server.value = getServer();
+
+  elements.server.addEventListener('keydown', (event) => {
+    if (event.key === 'Enter') {
+      try {
+        const url = new URL(elements.server.value);
+        const validatedUrl = url.toString();
+        const urlParams = new URLSearchParams(window.location.search);
+        urlParams.set('server', validatedUrl);
+        replaceLocation(urlParams);
+      } catch {}
+    }
+  });
+
   elements.formTask.addEventListener('submit', async (event) => {
     event.preventDefault();
     const { value } = elements.taskId;
@@ -437,4 +452,13 @@ async function getProfileFromTaskGroup(taskGroupId) {
     elements.info.style.display = 'none';
     elements.error.style.display = 'block';
   }
+}
+
+/**
+ * @param {URLSearchParams} urlParams
+ */
+function replaceLocation(urlParams) {
+  const url = new URL(window.location.href);
+  const newLocation = `${url.origin}${url.pathname}?${urlParams}`;
+  history.replaceState(null, '', newLocation);
 }

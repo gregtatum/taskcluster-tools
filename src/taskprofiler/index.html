@@ -6,7 +6,7 @@
 </head>
 <body>
   <script src='./taskprofiler.mjs' type="module"></script>
-  <link rel="stylesheet" href="./taskprofiler.css">
+  <link rel="stylesheet" href="./taskprofiler.css?version=1">
 
   <div class="wrapper">
     <h2>Task Profiler</h2>
@@ -15,13 +15,13 @@
     </p>
 
     <form id="formTask">
-      <div><label for="taskId">Task ID:</label></div>
+      <label class="inputLabel" for="taskId">Task ID:</label>
       <input type="text" id="taskId" placeholder="Paste a Task ID" />
       <input type="submit" value="Open" />
     </form>
 
     <form id="formTaskGroup">
-      <div><label for="taskGroup">Task Group:</label></div>
+      <label class="inputLabel" for="taskGroup">Task Group:</label>
       <input type="text" id="taskGroup" placeholder="Paste a Task Group ID" />
       <input type="submit" value="Open" />
 
@@ -33,6 +33,12 @@
 
     <p id="info"></p>
     <p id="error">There was an error. See the console log.</p>
+
+    <div class="serverWrapper">
+      <label class="inputLabel" for="server">Taskcluster Server:</label>
+      <input type="text" id="server" />
+    </div>
+
   </div>
 </body>
 </html>

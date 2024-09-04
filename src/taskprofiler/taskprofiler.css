@@ -33,3 +33,15 @@ form {
 #fetchDependentTasks {
   margin-block: 16px;
 }
+
+.serverWrapper {
+  opacity: 0.6;
+  border-top: 1px solid #aaa;
+  padding-top: 32px;
+}
+
+.inputLabel {
+  display: block;
+  color: #007ce9;
+  font-weight: bold;
+}
