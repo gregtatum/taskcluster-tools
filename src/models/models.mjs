@@ -362,25 +362,46 @@ assertComparison('1.0a', '1.1', aLessThanB);
  * @param {EvalResults} cometResults
  */
 function logCometResults(cometResults) {
-  let tsv = '';
-
   /** @type {Array<unknown[]>} */
-  const rows = [];
-
-  addRow(['Lang Pair', 'From', 'To', 'Google', 'Bergamot']);
-
-  /**
-   * @param {unknown[]} row
-   */
-  function addRow(row) {
-    rows.push(row);
-    tsv += row.join('\t') + '\n';
-  }
+  const xx_en = [];
+  const en_xx = [];
 
   for (const [langPair, evaluation] of Object.entries(cometResults)) {
     const flores = evaluation['flores-dev'];
     const [fromLang, toLang] = langPair.split('-');
-    addRow([langPair, fromLang, toLang, flores.google, flores.bergamot]);
+    const row = [
+      langPair,
+      fromLang,
+      toLang,
+      flores.google || '',
+      flores.bergamot || '',
+    ];
+    if (fromLang === 'en') {
+      en_xx.push(row);
+    } else {
+      xx_en.push(row);
+    }
+  }
+
+  /**
+   * @param {any} a
+   * @param {any} b
+   */
+  function sortRow(a, b) {
+    return (a[1] + '-' + a[2]).localeCompare(b[1] + '-' + b[2]);
+  }
+  xx_en.sort(sortRow);
+  en_xx.sort(sortRow);
+
+  const rows = [
+    ['Lang Pair', 'From', 'To', 'Google', 'Bergamot'],
+    ...en_xx,
+    ...xx_en,
+  ];
+
+  let tsv = '';
+  for (const row of rows) {
+    tsv += row.join('\t') + '\n';
   }
 
   console.log(tsv);
