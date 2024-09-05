@@ -208,10 +208,10 @@ function buildProfile(logRows, task) {
   let profileStartTime = 0;
   for (const logRow of logRows) {
     if (logRow.time) {
-      profileStartTime = Number(logRow.time);
-      profile.meta.startTime = profileStartTime;
+      profileStartTime = Math.min(profileStartTime, Number(logRow.time));
     }
   }
+  profile.meta.startTime = profileStartTime;
 
   // Create the thread that we'll attach the markers to.
   const thread = getEmptyThread();
