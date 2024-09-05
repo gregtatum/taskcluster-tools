@@ -108,7 +108,7 @@ export async function getTasks(
 
   /** @type {Array<Promise<TaskGroup>>} */
   const taskGroupPromises = taskGroupIds.map((id) =>
-    fetchTaskGroup(server, id),
+    fetchTaskGroup(server, id, updateStatusMessage),
   );
 
   let taskGroups = await Promise.all(taskGroupPromises);
@@ -242,18 +242,48 @@ export async function getTasks(
 /**
  * @param {string} server
  * @param {string} taskGroupId
+ * @param {(message: string) => void} updateStatusMessage
  * @return {Promise<TaskGroup>}
  */
-export function fetchTaskGroup(server, taskGroupId) {
+export async function fetchTaskGroup(server, taskGroupId, updateStatusMessage) {
   const listUrl = `${server}/api/queue/v1/task-group/${taskGroupId}/list`;
+  updateStatusMessage(`Fetching Task Group ${taskGroupId}`);
   console.log('Fetching Task Group:', listUrl);
-  return fetch(listUrl).then((response) => {
-    if (response.ok) {
-      return response.json();
-    }
+  const response = await fetch(listUrl);
+
+  if (!response.ok) {
     response.json().then((json) => console.error(json));
     return Promise.reject('Could not fetch task.');
-  });
+  }
+
+  /** @type {TaskGroup} */
+  const taskGroup = await response.json();
+  /** @type {TaskGroup} */
+  let nextTaskGroup = taskGroup;
+
+  // This API is paginated, continue through it.
+  const maxPages = 20;
+  for (let page = 0; page < maxPages; page++) {
+    if (!nextTaskGroup.continuationToken) {
+      // There are no more continuations.
+      break;
+    }
+    updateStatusMessage(
+      `Fetching Task Group ${taskGroupId} (page ${page + 2})`,
+    );
+    const continuationUrl =
+      listUrl + '?continuationToken=' + nextTaskGroup.continuationToken;
+    console.log('Fetching next tasks for Task Group', continuationUrl);
+    const response = await fetch(continuationUrl);
+    if (!response.ok) {
+      console.error('Failed to fetch a TaskGroup task continuation');
+      break;
+    }
+    nextTaskGroup = await response.json();
+    taskGroup.tasks = [...taskGroup.tasks, ...nextTaskGroup.tasks];
+  }
+
+  return taskGroup;
 }
 
 /**

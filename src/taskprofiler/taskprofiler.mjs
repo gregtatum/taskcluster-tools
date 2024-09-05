@@ -435,6 +435,8 @@ async function getProfileFromTaskGroup(taskGroupId) {
       /* ignored task group ids */ new Set(),
     );
 
+    console.log('Fetched TaskGroups', result);
+
     if (!result) {
       return;
     }

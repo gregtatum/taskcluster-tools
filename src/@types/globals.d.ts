@@ -87,6 +87,7 @@ declare interface TaskGroup {
   schedulerId: string, // "translations-level-1",
   expires: string,// "2024-09-18T19:57:56.114Z",
   tasks: TaskAndStatus[],
+  continuationToken?: string
 }
 
 declare type TaskID = string;
