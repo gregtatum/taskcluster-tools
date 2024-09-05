@@ -152,9 +152,9 @@ function addToRow(td, pair, records, cometResults, model) {
 
   const hasEvals = bergamotComet && googleComet;
 
-  const difference = bergamotComet - googleComet;
-  const sign = difference >= 0 ? '+' : '';
-  const percentageDisplay = hasEvals ? `${sign}${difference.toFixed(4)}` : '';
+  const percentage = 100 * (1 - googleComet / bergamotComet);
+  const sign = percentage >= 0 ? '+' : '';
+  const percentageDisplay = hasEvals ? `${sign}${percentage.toFixed(2)}%` : '';
 
   const avgPercentage = 100 * (1 - googleCometAvg / bergamotCometAvg);
   const avgSign = avgPercentage >= 0 ? '+' : '';
