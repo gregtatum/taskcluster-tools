@@ -132,6 +132,16 @@ function getCategories() {
       color: 'green',
       subcategories: ['Other'],
     },
+    {
+      name: 'Task',
+      color: 'lightblue',
+      subcategories: ['Other'],
+    },
+    {
+      name: 'Log',
+      color: 'green',
+      subcategories: ['Other'],
+    },
   ];
 }
 
@@ -140,7 +150,7 @@ function getCategories() {
  * Markers: https://github.com/firefox-devtools/profiler/src/types/markers.js
  * Schema: https://github.com/firefox-devtools/profiler/blob/df32b2d320cb4c9bc7b4ee988a291afa33daff71/src/types/markers.js#L100
  */
-function getTaskSchema() {
+function getLiveLogRowSchema() {
   return {
     name: 'LiveLogRow',
     tooltipLabel: '{marker.data.message}',
@@ -174,10 +184,54 @@ function getTaskSchema() {
         label: 'Time',
         format: 'time',
       },
+    ],
+  };
+}
+
+function getTaskSchema() {
+  return {
+    name: 'Task',
+    tooltipLabel: '{marker.data.taskName}',
+    tableLabel: '{marker.data.taskName}',
+    chartLabel: '{marker.data.taskName}',
+    display: ['marker-chart', 'marker-table', 'timeline-overview'],
+    data: [
+      {
+        key: 'startTime',
+        label: 'Start time',
+        format: 'string',
+      },
+      {
+        key: 'taskName',
+        label: 'Task Name',
+        format: 'string',
+        searchable: true,
+      },
+      {
+        key: 'time',
+        label: 'Time',
+        format: 'time',
+      },
+      {
+        key: 'taskURL',
+        label: 'Task',
+        format: 'url',
+      },
       {
         key: 'taskGroupURL',
-        label: 'Task Group URL',
+        label: 'Task Group',
         format: 'url',
+      },
+
+      {
+        key: 'taskId',
+        label: 'Task ID',
+        format: 'string',
+      },
+      {
+        key: 'taskGroupId',
+        label: 'Task Group ID',
+        format: 'string',
       },
       {
         key: 'taskGroupProfile',
@@ -193,22 +247,25 @@ function getTaskSchema() {
  *
  * @param {LogRow[]} logRows - The log rows to process.
  * @param {Task} task
+ * @param {string} taskId
  * @returns {import('profiler.mjs').Profile} The generated profile.
  */
-function buildProfile(logRows, task) {
+function buildProfile(logRows, task, taskId) {
   const profile = getEmptyProfile();
-  profile.meta.markerSchema = [getTaskSchema()];
+  profile.meta.markerSchema = [getLiveLogRowSchema(), getTaskSchema()];
   profile.meta.categories = getCategories();
 
   const date = new Date(task.created).toLocaleDateString();
 
-  profile.meta.product = `Task ${task.metadata.name} - ${date}`;
+  profile.meta.product = `${task.metadata.name} ${taskId} - ${date}`;
 
   // Compute and save the profile start time.
-  let profileStartTime = 0;
+  let profileStartTime = Infinity;
+  let lastLogRowTime = 0;
   for (const logRow of logRows) {
     if (logRow.time) {
       profileStartTime = Math.min(profileStartTime, Number(logRow.time));
+      lastLogRowTime = Math.max(lastLogRowTime, Number(logRow.time));
     }
   }
   profile.meta.startTime = profileStartTime;
@@ -230,6 +287,27 @@ function buildProfile(logRows, task) {
 
   const stringArray = new UniqueStringArray();
 
+  {
+    // Add the task.
+    const durationMarker = 1;
+    markers.startTime.push(0);
+    markers.endTime.push(lastLogRowTime - profileStartTime);
+    markers.phase.push(durationMarker);
+
+    markers.category.push(categoryIndexDict['Task'] ?? 0);
+    markers.name.push(stringArray.indexForString(task.metadata.name));
+
+    markers.data.push({
+      type: 'Task',
+      name: 'Task',
+      taskName: task.metadata.name,
+      taskGroupURL: `${getServer()}/tasks/groups/${task.taskGroupId}`,
+      taskURL: `${getServer()}/tasks/${taskId}`,
+      taskGroupProfile: `https://gregtatum.github.io/taskcluster-tools/src/taskprofiler/?taskGroupId=${task.taskGroupId}`,
+    });
+    markers.length += 1;
+  }
+
   for (const logRow of logRows) {
     if (!logRow.time) {
       continue;
@@ -246,7 +324,7 @@ function buildProfile(logRows, task) {
     // markers.endTime.push(runEnd - profileStartTime);
     // markers.phase.push(durationMarker);
 
-    markers.category.push(categoryIndexDict[logRow.component] || 0);
+    markers.category.push(categoryIndexDict['Log'] || 0);
     markers.name.push(stringArray.indexForString(logRow.component));
 
     markers.data.push({
@@ -255,8 +333,6 @@ function buildProfile(logRows, task) {
       message: logRow.message,
       hour: logRow.time.toISOString().substr(11, 8),
       date: logRow.time.toISOString().substr(0, 10),
-      taskGroupURL: `${getServer()}/tasks/groups/${task.taskGroupId}`,
-      taskGroupProfile: `https://gregtatum.github.io/taskcluster-tools/src/taskprofiler/?taskGroupId=${task.taskGroupId}`,
     });
     markers.length += 1;
   }
@@ -283,10 +359,13 @@ async function fetchLogsAndBuildProfile(taskId, task) {
 
   const logText = await response.text();
   const logLines = logText.split('\n');
+  console.log('Log text', { logText });
 
   const logRows = readLogFile(logLines);
   fixupLogRows(logRows);
-  return buildProfile(logRows, task);
+
+  console.log('Log rows', { logRows });
+  return buildProfile(logRows, task, taskId);
 }
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -407,9 +486,11 @@ async function getProfileFromTaskId(taskId) {
       console.error(task);
       return;
     }
+    console.log('Task', task);
 
     const profile = await fetchLogsAndBuildProfile(taskId, task);
-    console.log(profile);
+
+    console.log('Profile', profile);
 
     await injectProfile(profile);
     updateStatusMessage(`Profile for task "${taskId}" was opened.`);
