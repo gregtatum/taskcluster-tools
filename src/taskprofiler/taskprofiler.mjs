@@ -44,14 +44,15 @@ asAny(window).profilerOrigin = 'https://profiler.firefox.com';
  */
 function readLogFile(lines) {
   const logPattern =
-    /\[(?<component>\w+)(:(?<logLevel>\w+))?\s*(?<time>[\d\-T:.Z]+)\]\s*(?<message>.*)/;
-  // \[                                                            \]                     "[taskcluster:warn 2024-05-20T14:40:11.353Z]"
-  //   (?<component>\w+)                                                                  Capture the component name, here "taskcluster"
-  //                    (:(?<logLevel>\w+))?                                              An optional log level, like "warn"
-  //                                        \s*                                           Ignore whitespace
-  //                                           (?<time>[\d\-T:.Z]+)                       Capture the timestamp
-  //                                                                 \s*                  Ignore whitespace
-  //                                                                    (?<message>.*)    Capture the rest as the message
+    /^\s*\[(?<component>\w+)(:(?<logLevel>\w+))?\s*(?<time>[\d\-T:.Z]+)\]\s*(?<message>.*)/;
+  // ^\s*                                                                                     Skip any beginning whitespace.
+  //     \[                                                            \]                     "[taskcluster:warn 2024-05-20T14:40:11.353Z]"
+  //       (?<component>\w+)                                                                  Capture the component name, here "taskcluster"
+  //                        (:(?<logLevel>\w+))?                                              An optional log level, like "warn"
+  //                                            \s*                                           Ignore whitespace
+  //                                               (?<time>[\d\-T:.Z]+)                       Capture the timestamp
+  //                                                                     \s*                  Ignore whitespace
+  //                                                                        (?<message>.*)    Capture the rest as the message
 
   /** @type {LogRow[]} */
   const logRows = [];
@@ -250,7 +251,7 @@ function getTaskSchema() {
  * @param {string} taskId
  * @returns {import('profiler.mjs').Profile} The generated profile.
  */
-function buildProfile(logRows, task, taskId) {
+function buildProfileFromLogRows(logRows, task, taskId) {
   const profile = getEmptyProfile();
   profile.meta.markerSchema = [getLiveLogRowSchema(), getTaskSchema()];
   profile.meta.categories = getCategories();
@@ -315,15 +316,8 @@ function buildProfile(logRows, task, taskId) {
     const runStart = Number(logRow.time);
     const instantMarker = 0;
     markers.startTime.push(runStart - profileStartTime);
-
     markers.endTime.push(null);
     markers.phase.push(instantMarker);
-
-    // Code to add a duration marker:
-    // const durationMarker = 1;
-    // markers.endTime.push(runEnd - profileStartTime);
-    // markers.phase.push(durationMarker);
-
     markers.category.push(categoryIndexDict['Log'] || 0);
     markers.name.push(stringArray.indexForString(logRow.component));
 
@@ -365,7 +359,7 @@ async function fetchLogsAndBuildProfile(taskId, task) {
   fixupLogRows(logRows);
 
   console.log('Log rows', { logRows });
-  return buildProfile(logRows, task, taskId);
+  return buildProfileFromLogRows(logRows, task, taskId);
 }
 
 document.addEventListener('DOMContentLoaded', () => {
