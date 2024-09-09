@@ -58,7 +58,7 @@ async function main() {
 
           const urlParams = new URLSearchParams(window.location.search);
           urlParams.set('taskGroupNames', JSON.stringify(names));
-          changeLocation(urlParams);
+          replaceLocation(urlParams);
         }
       });
       createTD(input);
@@ -489,27 +489,55 @@ async function buildTableRow(
   trainActionTask,
   isHidden,
 ) {
-  const tasks = (await fetchTaskGroup(taskGroupId)).tasks;
+  const taskGroup = await fetchTaskGroup(taskGroupId);
+  const tasks = taskGroup.tasks;
   const taskGroupUrl = `${server}/tasks/groups/${taskGroupId}`;
+  const taskGroupNames = getTaskGroupNames();
 
   {
     // Build the task group ID link
     const div = document.createElement('div');
     div.className = 'taskGroupCell';
 
-    const a = document.createElement('a');
-    a.innerText = taskGroupId;
-    a.href = taskGroupUrl;
-    a.target = '_blank';
-    div.appendChild(a);
+    const taskGroupLink = document.createElement('a');
+    const input = document.createElement('input');
+    const editButton = document.createElement('button');
+    const showHideButton = document.createElement('button');
 
-    const button = document.createElement('button');
-    button.innerText = isHidden ? 'Show' : 'Hide';
-    button.addEventListener(
+    input.addEventListener(
+      'keydown',
+      renameTaskGroupHandler(taskGroupId, input, taskGroupLink),
+    );
+    input.style.display = 'none';
+    input.value = taskGroupNames[taskGroupId] ?? '';
+
+    editButton.className = 'renameTaskGroup';
+    editButton.addEventListener('click', () => {
+      if (taskGroupLink.style.display === 'none') {
+        taskGroupLink.style.display = 'block';
+        input.style.display = 'none';
+      } else {
+        taskGroupLink.style.display = 'none';
+        input.style.display = 'block';
+        input.focus();
+      }
+    });
+
+    taskGroupLink.innerText = taskGroupNames[taskGroupId] ?? taskGroupId;
+    taskGroupLink.href = taskGroupUrl;
+    taskGroupLink.target = '_blank';
+
+    showHideButton.innerText = isHidden ? 'Show' : 'Hide';
+    showHideButton.className = 'showHideButton';
+    showHideButton.addEventListener(
       'click',
       toggleHiddenHandler(taskGroupId, isHidden),
     );
-    div.appendChild(button);
+
+    div.appendChild(editButton);
+    div.appendChild(input);
+    div.appendChild(taskGroupLink);
+    div.appendChild(showHideButton);
 
     createTD(div);
   }
@@ -550,6 +578,13 @@ async function buildTableRow(
     a.href = `https://wandb.ai/moz-translations/${langPair}/workspace`;
     a.target = '_blank';
     const td = createTD(a);
+
+    // Add a hidden date for sorting.
+    const hiddenDate = document.createElement('span');
+    hiddenDate.className = 'hiddenDate';
+    hiddenDate.innerText = tasks[0].task.created;
+
+    td.appendChild(hiddenDate);
     td.appendChild(document.createTextNode(' '));
     td.appendChild(button);
   }
@@ -1026,4 +1061,87 @@ function sortTable(table, columnIndex, dir = 'asc') {
 function getShowAll() {
   const urlParams = new URLSearchParams(window.location.search);
   return urlParams.get('showAll') === 'true';
+}
+
+/**
+ * @param {string} taskGroupId
+ * @param {HTMLInputElement} input
+ * @param {HTMLElement} taskGroupLink
+ */
+function renameTaskGroupHandler(taskGroupId, input, taskGroupLink) {
+  /**
+   * @param {KeyboardEvent} event
+   */
+  return (event) => {
+    if (event.key === 'Escape') {
+      input.style.display = 'none';
+      taskGroupLink.style.display = 'block';
+    }
+    if (event.key !== 'Enter') {
+      return;
+    }
+    event.preventDefault();
+
+    const taskGroupNames = getTaskGroupNames();
+    if (input.value) {
+      taskGroupNames[taskGroupId] = input.value;
+      taskGroupLink.innerText = input.value;
+    } else {
+      delete taskGroupNames[taskGroupId];
+      taskGroupLink.innerText = taskGroupId;
+    }
+
+    saveTaskGroupNames(taskGroupNames);
+
+    input.style.display = 'none';
+    taskGroupLink.style.display = 'block';
+  };
+}
+
+/**
+ * @param {Record<string, string>} taskGroupNames
+ */
+function saveTaskGroupNames(taskGroupNames) {
+  const urlParams = new URLSearchParams(window.location.search);
+  urlParams.set('taskGroupNames2', JSON.stringify(taskGroupNames));
+  replaceLocation(urlParams);
+}
+
+/**
+ * @param {URLSearchParams} urlParams
+ */
+function replaceLocation(urlParams) {
+  const url = new URL(window.location.href);
+  const newLocation = `${url.origin}${url.pathname}?${urlParams}`;
+  history.replaceState(null, '', newLocation);
+}
+
+/**
+ * @returns {Record<string, string>}
+ */
+function getTaskGroupNames() {
+  const urlParams = new URLSearchParams(window.location.search);
+  const taskGroupNamesString = urlParams.get('taskGroupNames2');
+  if (!taskGroupNamesString) {
+    return {};
+  }
+  try {
+    const record = JSON.parse(taskGroupNamesString);
+    if (!record || typeof record !== 'object') {
+      return {};
+    }
+    /** @type {Record<string, string>} */
+    const validatedRecord = {};
+    for (const [key, value] of Object.entries(record)) {
+      if (typeof key === 'string' && typeof value === 'string') {
+        validatedRecord[key] = value;
+      } else {
+        console.error('Invalid entry in the taskGroupNames:', { key, value });
+      }
+    }
+    return validatedRecord;
+  } catch (error) {
+    console.error('Could not parse taskGroupNames', taskGroupNamesString);
+  }
+  return {};
 }

@@ -88,7 +88,25 @@ td:nth-child(14) {
   & a {
     flex: 1;
   }
-  & button {
+  & .showHideButton {
     margin-inline-start: 6px;
   }
+  & .renameTaskGroup {
+    background: url("../../assets/edit.svg") 50% 50%;
+    width: 16px;
+    height: 16px;
+    border: 0;
+    box-sizing: border-box;
+    margin: 0 !important;
+    position: relative;
+    left: -5px;
+    cursor: pointer;
+  }
+}
+
+.hiddenDate {
+  width: 0px !important;
+  padding: 0px !important;
+  margin: 0px !important;
+  overflow: hidden;
 }
