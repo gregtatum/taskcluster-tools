@@ -32,7 +32,7 @@ asAny(window).profilerOrigin = 'https://profiler.firefox.com';
  * @typedef {Object} LogRow
  *
  * @prop {string} component
- * @prop {Date | null} time
+ * @prop {Date} time
  * @prop {string} message
  */
 
@@ -57,6 +57,19 @@ function readLogFile(lines) {
   /** @type {LogRow[]} */
   const logRows = [];
 
+  // Find the first time.
+  let time;
+  for (const line of lines) {
+    const match = line.match(logPattern);
+    if (match && match.groups) {
+      time = new Date(match.groups.time);
+      break;
+    }
+  }
+  if (!time) {
+    throw new Error('Could not find a time in the log rows');
+  }
+
   for (const line of lines) {
     if (!line.trim()) {
       continue;
@@ -64,15 +77,16 @@ function readLogFile(lines) {
 
     const match = line.match(logPattern);
     if (match && match.groups) {
+      time = new Date(match.groups.time);
       logRows.push({
         component: match.groups.component,
-        time: new Date(match.groups.time),
+        time,
         message: match.groups.message,
       });
     } else {
       logRows.push({
-        component: '',
-        time: null,
+        component: 'no timestamp',
+        time,
         message: line,
       });
     }
@@ -310,9 +324,6 @@ function buildProfileFromLogRows(logRows, task, taskId) {
   }
 
   for (const logRow of logRows) {
-    if (!logRow.time) {
-      continue;
-    }
     const runStart = Number(logRow.time);
     const instantMarker = 0;
     markers.startTime.push(runStart - profileStartTime);
