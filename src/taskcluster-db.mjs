@@ -58,6 +58,7 @@ export class TaskclusterDB {
       return {
         taskId,
         totalSize: 0,
+        totalMonthBytes: 0,
         artifacts: [],
       };
     }
@@ -72,21 +73,29 @@ export class TaskclusterDB {
     const artifactListing = {
       taskId,
       totalSize: 0,
+      totalMonthBytes: 0,
       artifacts: [],
     };
+
+    const monthsInStorage = getMonthsBetweenDates(task.created, task.expires);
 
     for (const { runId } of runs) {
       const { artifacts } = await listArtifacts(server, status.taskId, runId);
       for (const { name: path } of artifacts) {
         const size = await getArtifactSize(server, status.taskId, path);
+        /** @type {null | number} */
+        let monthBytes = null;
         if (size) {
+          monthBytes = monthsInStorage * size;
           artifactListing.totalSize += size;
+          artifactListing.totalMonthBytes += monthBytes;
         }
 
         artifactListing.artifacts.push({
           runId,
           path,
           size,
+          monthBytes,
         });
       }
     }
@@ -163,6 +172,34 @@ export class TaskclusterDB {
       };
     });
   }
+
+  /**
+   * Deletes an IndexedDB database.
+   * @returns {Promise<void>}
+   */
+  static delete() {
+    return new Promise((resolve, reject) => {
+      const request = indexedDB.deleteDatabase('TaskclusterData');
+
+      request.onsuccess = () => {
+        console.log(`Database TaskclusterData deleted successfully`);
+        resolve();
+      };
+
+      request.onerror = (event) => {
+        console.error(
+          `Error deleting database: ${getIDBOpenDBRequest(event).error}`,
+        );
+        reject(getIDBOpenDBRequest(event).error);
+      };
+
+      request.onblocked = () => {
+        alert(
+          `Deletion of database ${dbName} is blocked. Please close all connections.`,
+        );
+      };
+    });
+  }
 }
 
 /**
@@ -231,7 +268,6 @@ function getIDBRequest(event) {
 }
 
 /**
- * @template T
  * @param {Event} event
  * @returns {IDBOpenDBRequest}
  */
@@ -242,4 +278,20 @@ function getIDBOpenDBRequest(event) {
     throw new Error('Expected to get the IDBRequest');
   }
   return request;
+}
+
+/**
+ * Computes the number of months between two date strings (ISO 8601 format).
+ *
+ * @param {string} a
+ * @param {string} b
+ * @returns {number}
+ */
+function getMonthsBetweenDates(a, b) {
+  // Account for Gregorian year lengths because I'm a nerd.
+  const daysInYear = 365 + 0.25 - 0.01 + 0.0025 - 0.00025;
+  const daysInMonth = daysInYear / 12;
+  const msInMonth = 1000 * 60 * 60 * 24 * daysInMonth;
+  // @ts-ignore
+  return (new Date(b) - new Date(a)) / msInMonth;
 }

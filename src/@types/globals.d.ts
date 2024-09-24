@@ -252,10 +252,12 @@ declare type TaskState =
 interface ArtifactListing {
   taskId: string,
   totalSize: number,
+  totalMonthBytes: number, // How many bytes are stored in a month
   artifacts: Array<{
     runId: number,
     path: string,
     // The size in bytes.
-    size: number | null
+    size: number | null,
+    monthBytes: number | null
   }>
 }

@@ -18,13 +18,16 @@ const d3 = window.d3;
 
 const elements = {
   tbody: getElement('tbody'),
-  storageCostRate: /** @type {HTMLButtonElement} */ (
+  storageCostRate: /** @type {HTMLInputElement} */ (
     getElement('storage-cost-rate')
   ),
   taskGroupsTextarea: /** @type {HTMLTextAreaElement} */ (
     getElement('task-groups-textarea')
   ),
-  fetchButton: /** @type {HTMLInputElement} */ (getElement('fetch-button')),
+  fetchButton: /** @type {HTMLButtonElement} */ (getElement('fetch-button')),
+  clearCacheButton: /** @type {HTMLButtonElement} */ (
+    getElement('clear-cache-button')
+  ),
 };
 
 let storageRate = 0;
@@ -65,6 +68,14 @@ function setupInputs() {
         console.log(`!!! elements.fetchButton`, elements.fetchButton);
       }
     }
+  });
+
+  elements.clearCacheButton.addEventListener('click', async () => {
+    TaskclusterDB.delete().then(() => {
+      if (confirm('Cache deleted, reload the page?')) {
+        window.location.reload();
+      }
+    });
   });
 }
 
@@ -123,25 +134,24 @@ async function runAnalysis(taskGroupIds) {
     const artifactListings = [];
     let totalSize = 0;
     let totalCount = 0;
+    let totalMonthBytes = 0;
     const tdArtifactCount = createTD('0');
     const tdBytes = createTD(formatBytes(totalSize));
-    const tdCost = createTD(
-      '$' + ((totalSize / 1_000_000_000) * storageRate * 12).toFixed(2),
-    );
+    const tdCost = createTD('$0.00');
 
     for (let i = 0; i < taskGroup.tasks.length; i++) {
       const taskAndStatus = taskGroup.tasks[i];
-
       const listing = await taskcluster.getArtifactListing(taskAndStatus);
       artifactListings.push(listing);
       totalCount += listing.artifacts.length;
       totalSize += listing.totalSize;
+      totalMonthBytes += listing.totalMonthBytes;
       tdArtifactCount.innerText = `${totalCount} (task ${i + 1} of ${
         taskGroup.tasks.length
       })`;
       tdBytes.innerText = formatBytes(totalSize);
       tdCost.innerText =
-        '$' + ((totalSize / 1_000_000_000) * storageRate * 12).toFixed(2);
+        '$' + ((totalMonthBytes / 1_000_000_000) * storageRate).toFixed(2);
     }
 
     tdArtifactCount.innerText = String(totalCount);
