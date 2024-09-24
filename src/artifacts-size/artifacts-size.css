@@ -1,0 +1,54 @@
+:root {
+  font-family: sans-serif;
+}
+
+table {
+  border-collapse: collapse;
+  border-style: hidden;
+  margin-bottom: .25rem;
+  margin-top: .25rem;
+  border-radius: 9px;
+  overflow: hidden;
+  box-shadow: 0 0 0 1px #666;
+}
+
+th {
+  background-color: #aaa;
+}
+
+td, th {
+  border: 0.9px solid #c6c6c6;
+  padding: 0.45rem 0.85rem;
+  text-wrap: nowrap;
+
+  & span {
+    background-color: #cbcbcbcc;
+    padding: 3px 6px;
+    display: inline-block;
+    margin: -3px 0 -3px 10px;
+    border-radius: 3px;
+  }
+}
+
+#info > * {
+  margin-block: 1em;
+}
+
+label {
+  color: steelblue;
+  font-weight: bold;
+}
+
+input[type="number"], textarea {
+  padding: 0.4em;
+  width: 400px !important;
+}
+
+#info {
+  text-align: center;
+  border: 1px solid #aaa;
+  padding: 1em;
+  border-radius: 12px;
+  max-width: 500px;
+  margin-bottom: 1em;
+}

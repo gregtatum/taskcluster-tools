@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Artifact Storage Size</title>
+  <link rel="stylesheet" href="./artifacts-size.css?cacheBust=1">
+</head>
+<body>
+  <h2>Artifact Storage Size</h2>
+  <p>Compute the size of the artifact storage for a task group.</p>
+  <div id="info">
+    <a href="https://sql.telemetry.mozilla.org/queries/102414/source?p_date=2024-01-01&p_end_date=2024-09-23&p_start_date=2024-06-01">
+      All Firefox Translations Training Task Groups
+    </a>
+    <div>
+      <label for="storage-cost-rate">Cost per GB/month:</label><br/>
+      <input id="storage-cost-rate" type="number" value="0.0"></input>
+    </div>
+    <div>
+      <label for="task-groups-textarea">Task Group IDs (one per line):</label><br/>
+      <textarea id="task-groups-textarea"></textarea>
+    </div>
+    <div>
+      <button type="button" id="fetch-button">Fetch task groups</button>
+    </div>
+  </div>
+  <table>
+    <thead>
+      <tr>
+        <th>Task Group</th>
+        <th>Language</th>
+        <th>Task Count</th>
+        <th>Expires</th>
+        <th>Artifacts Count</th>
+        <th>Artifacts Size</th>
+        <th>Artifacts Cost</th>
+        <th>Breakdown</th>
+      </tr>
+    </thead>
+    <tbody id="tbody">
+    </tbody>
+  </table>
+  <script src="../../assets/d3.v7.min.js"></script>
+  <script type="module" src="./artifacts-size.mjs"></script>
+</body>
+</html>

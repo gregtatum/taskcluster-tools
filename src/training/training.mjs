@@ -1,4 +1,9 @@
-import { exposeAsGlobal, getElement } from '../utils.mjs';
+import {
+  exposeAsGlobal,
+  getElement,
+  getLangPair,
+  replaceLocation,
+} from '../utils.mjs';
 import { isTaskGroupIdValid } from '../taskcluster.mjs';
 
 const server = 'https://firefox-ci-tc.services.mozilla.com';
@@ -543,18 +548,7 @@ async function buildTableRow(
   }
 
   // Attempt to find a langpair
-  let langPair = '';
-  for (const { task } of tasks) {
-    if (task.metadata.name.match(/-src-[a-z]{2,3}$/)) {
-      // Monolingual task.
-      continue;
-    }
-    const match = task.metadata.name.match(/-([a-z]{2,3}-[a-z]{2,3})$/);
-    if (match) {
-      langPair = match[1];
-      break;
-    }
-  }
+  const langPair = getLangPair(tasks);
 
   {
     // Keep track of this list.
@@ -1105,15 +1099,6 @@ function saveTaskGroupNames(taskGroupNames) {
   const urlParams = new URLSearchParams(window.location.search);
   urlParams.set('taskGroupNames2', JSON.stringify(taskGroupNames));
   replaceLocation(urlParams);
-}
-
-/**
- * @param {URLSearchParams} urlParams
- */
-function replaceLocation(urlParams) {
-  const url = new URL(window.location.href);
-  const newLocation = `${url.origin}${url.pathname}?${urlParams}`;
-  history.replaceState(null, '', newLocation);
 }
 
 /**

@@ -4,6 +4,7 @@ import {
   encodeUintArrayForUrlComponent,
   getElement,
   getServer,
+  replaceLocation,
 } from '../utils.mjs';
 import {
   getEmptyProfile,
@@ -11,7 +12,7 @@ import {
   UniqueStringArray,
   getProfile,
 } from '../profiler.mjs';
-import { getTasks } from '../taskcluster.mjs';
+import { fetchTaskGroup, getTasks } from '../taskcluster.mjs';
 
 const elements = {
   formTask: /** @type {HTMLFormElement} */ (getElement('formTask')),
@@ -542,13 +543,4 @@ async function getProfileFromTaskGroup(taskGroupId) {
     console.error(error);
     updateStatusMessage('There was an error, see the console for more details');
   }
-}
-
-/**
- * @param {URLSearchParams} urlParams
- */
-function replaceLocation(urlParams) {
-  const url = new URL(window.location.href);
-  const newLocation = `${url.origin}${url.pathname}?${urlParams}`;
-  history.replaceState(null, '', newLocation);
 }

@@ -11,6 +11,15 @@ declare interface Run {
   resolved?: string; // "2023-09-19T20:13:46.266Z";
 }
 
+declare interface ListArtifacts {
+  artifacts: Array<{
+    storageType: string, // "s3", "reference"
+    name: string, // "public/logs/live_backing.log"
+    expires: string // "2025-06-11T22:22:03.979Z",
+    contentType: string // "text/plain; charset=utf-8"
+  }>
+}
+
 declare interface Task {
   provisionerId: string; // "built-in";
   workerType: string; // "succeed";
@@ -239,3 +248,14 @@ declare type TaskState =
   | "exception"
   | "pending"
   | "unscheduled"
+
+interface ArtifactListing {
+  taskId: string,
+  totalSize: number,
+  artifacts: Array<{
+    runId: number,
+    path: string,
+    // The size in bytes.
+    size: number | null
+  }>
+}

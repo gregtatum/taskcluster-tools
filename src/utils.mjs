@@ -155,3 +155,90 @@ export function getElement(id) {
   }
   return el;
 }
+
+/**
+ * @param {HTMLElement} tbody
+ * @param {Element?} [insertBefore]
+ */
+export function createTableRow(tbody, insertBefore) {
+  const tr = document.createElement('tr');
+  tbody.insertBefore(tr, insertBefore ?? null);
+
+  return {
+    tr,
+    /**
+     * @param {string | Element} [textOrEl]
+     * @returns {HTMLTableCellElement}
+     */
+    createTD(textOrEl = '') {
+      const el = document.createElement('td');
+      if (typeof textOrEl === 'string') {
+        el.innerText = textOrEl;
+      } else {
+        el.appendChild(textOrEl);
+      }
+      tr.appendChild(el);
+      return el;
+    },
+  };
+}
+
+/**
+ * @param {TaskAndStatus[]} tasks
+ * @returns {string}
+ */
+export function getLangPair(tasks) {
+  for (const { task } of tasks) {
+    if (task.metadata.name.match(/-src-[a-z]{2,3}$/)) {
+      // Monolingual task.
+      continue;
+    }
+    const match = task.metadata.name.match(/-([a-z]{2,3}-[a-z]{2,3})$/);
+    if (match) {
+      return match[1];
+    }
+  }
+  return '';
+}
+
+/**
+ * Formats a number of bytes into a human-readable string.
+ *
+ * @param {number} bytes
+ * @param {number} [decimals]
+ * @returns {string}
+ */
+export function formatBytes(bytes, decimals = 2) {
+  if (bytes === 0) return '0 B';
+
+  const k = 1000;
+  const dm = decimals < 0 ? 0 : decimals;
+  const sizes = ['B', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB'];
+
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
+}
+
+/**
+ * @template A
+ * @template B
+ * @param {Array<A>} a
+ * @param {Array<B>} b
+ * @returns {Generator<[A, B]>}
+ */
+export function* zip(a, b) {
+  const length = Math.max(a.length, b.length);
+  for (let i = 0; i < length; i++) {
+    yield [a[i], b[i]];
+  }
+}
+
+/**
+ * @param {URLSearchParams} urlParams
+ */
+export function replaceLocation(urlParams) {
+  const url = new URL(window.location.href);
+  const newLocation = `${url.origin}${url.pathname}?${urlParams}`;
+  history.replaceState(null, '', newLocation);
+}

@@ -3,7 +3,12 @@ import {
   getTasks,
   isTaskGroupIdValid,
 } from '../taskcluster.mjs';
-import { exposeAsGlobal, getElement } from '../utils.mjs';
+import {
+  createTableRow,
+  exposeAsGlobal,
+  getElement,
+  replaceLocation,
+} from '../utils.mjs';
 const server = 'https://firefox-ci-tc.services.mozilla.com';
 
 // Work around ts(2686)
@@ -498,42 +503,6 @@ function changeLocation(urlParams) {
 
   // @ts-ignore
   window.location = newLocation;
-}
-
-/**
- * @param {URLSearchParams} urlParams
- */
-function replaceLocation(urlParams) {
-  const url = new URL(window.location.href);
-  const newLocation = `${url.origin}${url.pathname}?${urlParams}`;
-  history.replaceState(null, '', newLocation);
-}
-
-/**
- * @param {HTMLElement} tbody
- * @param {Element?} [insertBefore]
- */
-function createTableRow(tbody, insertBefore) {
-  const tr = document.createElement('tr');
-  tbody.insertBefore(tr, insertBefore ?? null);
-
-  return {
-    tr,
-    /**
-     * @param {string | Element} [textOrEl]
-     * @returns {HTMLTableCellElement}
-     */
-    createTD(textOrEl = '') {
-      const el = document.createElement('td');
-      if (typeof textOrEl === 'string') {
-        el.innerText = textOrEl;
-      } else {
-        el.appendChild(textOrEl);
-      }
-      tr.appendChild(el);
-      return el;
-    },
-  };
 }
 
 /**

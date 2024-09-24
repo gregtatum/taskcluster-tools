@@ -607,3 +607,66 @@ function fetchStreamWithDebounce(url, debounceTime) {
       });
   });
 }
+
+/**
+ * Fetches the size of a download by sending a HEAD request and following redirects.
+ *
+ * @param {string} url
+ * @returns {Promise<number | null>}
+ */
+async function getDownloadSize(url) {
+  try {
+    console.log('Getting download size', url);
+    const response = await fetch(url, {
+      method: 'HEAD',
+      redirect: 'follow',
+    });
+
+    if (!response.ok) {
+      throw new Error(
+        `Failed to fetch resource: ${response.status} ${response.statusText}`,
+      );
+    }
+
+    const contentLength = response.headers.get('Content-Length');
+    if (contentLength) {
+      return parseInt(contentLength, 10); // Return size in bytes
+    }
+    return null; // Content-Length header not present
+  } catch (error) {
+    console.error('Error fetching download size:', error);
+    return null; // In case of any error, return -1
+  }
+}
+
+/**
+ * Fetch an artifact, and optionally cache the results.
+ *
+ * @param {string} server
+ * @param {string} taskId
+ * @param {string} artifactPath
+ * @returns {Promise<number | null>}
+ */
+export async function getArtifactSize(server, taskId, artifactPath) {
+  return getDownloadSize(
+    `${server}/api/queue/v1/task/${taskId}/artifacts/${artifactPath}`,
+  );
+}
+
+/**
+ * @param {string} server
+ * @param {string} taskId
+ * @param {string | number} runId
+ * @returns {Promise<ListArtifacts>}
+ */
+export async function listArtifacts(server, taskId, runId) {
+  const url = `${server}/api/queue/v1/task/${taskId}/runs/${runId}/artifacts`;
+  console.log('Fetching artifact listing', url);
+  const response = await fetch(url);
+
+  if (!response.ok) {
+    throw new Error(`HTTP error! Status: ${response.status}`);
+  }
+
+  return response.json();
+}
