@@ -1,9 +1,4 @@
-import {
-  exposeAsGlobal,
-  getElement,
-  getLangPair,
-  replaceLocation,
-} from '../utils.mjs';
+import { exposeAsGlobal, getElement, replaceLocation } from '../utils.mjs';
 import { isTaskGroupIdValid } from '../taskcluster.mjs';
 
 const server = 'https://firefox-ci-tc.services.mozilla.com';
@@ -549,7 +544,7 @@ async function buildTableRow(
   }
 
   // Attempt to find a langpair
-  const langPair = getLangPair(tasks);
+  const langPair = await getLangPair(trainActionTask);
 
   {
     // Keep track of this list.
@@ -920,6 +915,22 @@ async function getExperimentName(trainActionTask) {
   const experimentText = text.split('\nexperiment:\n')[1] ?? '';
   const nameText = experimentText.split('name:')[1] ?? '';
   return nameText.split('\n')[0] ?? '';
+}
+
+/**
+ * Fetch the yml config for a training action.
+ *
+ * @param {TaskAndStatus} trainActionTask
+ * @returns {Promise<string>}
+ */
+async function getLangPair(trainActionTask) {
+  const text = await getConfigText(trainActionTask);
+  const experimentText = text.split('\nexperiment:\n')[1] ?? '';
+  const srcText = experimentText.split('  src:')[1] ?? '';
+  const src = srcText.split('\n')[0] ?? '';
+  const trgText = experimentText.split('  trg:')[1] ?? '';
+  const trg = trgText.split('\n')[0] ?? '';
+  return `${src.trim()}-${trg.trim()}`;
 }
 
 /**
