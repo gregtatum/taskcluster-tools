@@ -73,9 +73,20 @@ td:nth-child(14) {
 
 #controls {
   margin: 1em;
+  max-height: 200px;
+  overflow: scroll;
+  border-radius: 9px;
+  outline: 1px solid #666;
+
   & input[type=text] {
     width: 200px;
   }
+}
+
+.train-tasks-table {
+  margin: 0;
+  box-shadow: none;
+  border-radius: 0;
 }
 
 .older-taskgroup {
