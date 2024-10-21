@@ -4,6 +4,7 @@ import { isTaskGroupIdValid } from '../taskcluster.mjs';
 const server = 'https://firefox-ci-tc.services.mozilla.com';
 
 const elements = {
+  dashboardName: /** @type {HTMLInputElement} */ (getElement('dashboardName')),
   taskGroup: /** @type {HTMLInputElement} */ (getElement('taskGroup')),
   loading: getElement('loading'),
   controls: getElement('controls'),
@@ -103,6 +104,19 @@ async function main() {
       changeLocation(urlParams);
     }
   });
+  {
+    const urlParams = new URLSearchParams(window.location.search);
+    const title =
+      urlParams.get('dashboardName') || 'Firefox Translations Training';
+    elements.dashboardName.value = title;
+    document.title = title;
+    elements.dashboardName.addEventListener('keyup', () => {
+      const urlParams = new URLSearchParams(window.location.search);
+      urlParams.set('dashboardName', elements.dashboardName.value);
+      replaceLocation(urlParams);
+      document.title = elements.dashboardName.value;
+    });
+  }
 
   buildTable();
 }

@@ -121,3 +121,10 @@ td:nth-child(14) {
   margin: 0px !important;
   overflow: hidden;
 }
+
+#dashboardName {
+  width: 100% !important;
+  box-sizing: border-box;
+  font-size: 16px;
+  padding: 5px;
+}

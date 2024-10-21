@@ -7,7 +7,6 @@
 <body>
   <script src='./training.mjs' type="module"></script>
   <link rel="stylesheet" href="./training.css">
-  <h2>Firefox Translations Training</h2>
   <p id="loading">Fetching the tasks from TaskCluster…</p>
   <p id="error">Error fetching the taskcluster. See the console log.</p>
 
@@ -16,12 +15,22 @@
       <tbody id="trainTaskGroupIds">
         <tr>
           <td>
+            <label for="dashboardName">
+              Dashboard Name
+            </label>
+          </td>
+          <td colspan="3">
+            <input type="text" id="dashboardName" />
+          </td>
+        </tr>
+        <tr>
+          <td>
             <label for="taskGroup">
               Add a Train Task Group
             </label>
           </td>
           <td colspan="3">
-            <input type="text" id="taskGroup" placeholder="Task Group ID"> (must contain train actions)
+            <input type="text" id="taskGroup" placeholder="Task Group ID" /> (must contain train actions)
           </td>
         </tr>
         <tr>
