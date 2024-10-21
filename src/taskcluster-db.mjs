@@ -1,5 +1,6 @@
 import { getServer } from './utils.mjs';
 import {
+  fetchArtifact,
   fetchTaskGroup,
   getArtifactSize,
   listArtifacts,
@@ -64,7 +65,7 @@ export class TaskclusterDB {
     }
     let listingFromDB = await this.#getArtifactListingFromDB(taskId);
     if (listingFromDB) {
-      console.log(`cached artifact listing ${task.metadata.name}`);
+      console.log(`[db] cached artifact listing ${task.metadata.name}`);
       return listingFromDB;
     }
     const server = getServer();
@@ -112,7 +113,7 @@ export class TaskclusterDB {
     {
       const taskGroup = await this.#getTaskGroupFromDB(taskGroupId);
       if (taskGroup) {
-        console.log('Task group was in indexeddb', taskGroupId);
+        console.log('[db] Task group was in indexeddb', taskGroupId);
         return taskGroup;
       }
     }
@@ -122,13 +123,99 @@ export class TaskclusterDB {
         taskGroupId,
         () => {},
       );
-      console.log('Saving taskgroup to indexeddb', taskGroup);
+      console.log('[db] Saving taskgroup to indexeddb', taskGroup);
       await this.addTaskGroup(taskGroup);
       return taskGroup;
     } catch (error) {
       console.error(error);
       return null;
     }
+  }
+
+  /**
+   * @param {string} taskId
+   * @param {string} path
+   * @returns {Promise<string | null>}
+   */
+  async getArtifactText(taskId, path) {
+    {
+      const entry = await this.#getArtifactTextFromDB(taskId, path);
+      if (entry) {
+        console.log('[db] Artifact was in indexeddb', taskId, path);
+        return entry.text;
+      }
+    }
+    try {
+      const text = await fetchArtifact(
+        getServer(),
+        taskId,
+        path,
+        'text',
+        false /* cache */,
+      );
+      console.log('[db] Saving artifact text to indexeddb', taskId, path);
+      await this.#addArtifactText(taskId, path, text);
+      return text;
+    } catch (error) {
+      console.error(error);
+      return null;
+    }
+  }
+
+  /**
+   * @param {string} taskId
+   * @param {string} path
+   * @returns {Promise<any>}
+   */
+  async getArtifactJSON(taskId, path) {
+    const text = await this.getArtifactText(taskId, path);
+    if (text === null) {
+      return null;
+    }
+    try {
+      return JSON.parse(text);
+    } catch (error) {
+      console.error('[db] Failed to parse json', { text });
+      return null;
+    }
+  }
+
+  /**
+   * @param {string} taskId
+   * @param {string} path
+   * @param {string} text
+   * @returns {Promise<void>}
+   */
+  async #addArtifactText(taskId, path, text) {
+    const db = await openDatabase();
+    const transaction = db.transaction('artifactText', 'readwrite');
+    const store = transaction.objectStore('artifactText');
+    /** @type {ArtifactText} */
+    const entry = { taskId, path, text };
+    store.add(entry);
+    return awaitTransactionComplete(transaction);
+  }
+
+  /**
+   * @param {string} taskId
+   * @param {string} artifactPath
+   * @returns {Promise<ArtifactText | null>}
+   */
+  async #getArtifactTextFromDB(taskId, artifactPath) {
+    const db = await openDatabase();
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction('artifactText', 'readonly');
+      const store = transaction.objectStore('artifactText');
+      const request = store.get([taskId, artifactPath]);
+
+      request.onsuccess = (event) => {
+        resolve(getIDBRequest(event).result);
+      };
+
+      request.onerror = (event) => {
+        reject(getIDBRequest(event).error);
+      };
+    });
   }
 
   /**
@@ -194,9 +281,7 @@ export class TaskclusterDB {
       };
 
       request.onblocked = () => {
-        alert(
-          `Deletion of database ${dbName} is blocked. Please close all connections.`,
-        );
+        alert(`Deletion of database is blocked. Please close all connections.`);
       };
     });
   }
@@ -206,30 +291,28 @@ export class TaskclusterDB {
  * Opens the IndexedDB database.
  * @returns {Promise<IDBDatabase>} A promise that resolves to the database instance.
  */
-function openDatabase() {
+async function openDatabase() {
+  // Rather than deal with migrations, just delete old databases, as they are only
+  // used as caches.
+  indexedDB.deleteDatabase('TaskclusterData');
+
   return new Promise((resolve, reject) => {
-    const request = indexedDB.open('TaskclusterData', 1);
+    const request = indexedDB.open('TaskclusterData2', 1);
+    indexedDB.databases;
 
     request.onupgradeneeded = (event) => {
       if (!event.target) {
         return;
       }
       const db = getIDBOpenDBRequest(event).result;
-
-      if (!db.objectStoreNames.contains('taskGroups')) {
-        const taskGroupStore = db.createObjectStore('taskGroups', {
-          keyPath: 'taskGroupId',
-        });
-        taskGroupStore.createIndex('tasks', 'tasks', { unique: true });
-      }
-
-      if (!db.objectStoreNames.contains('artifactListing')) {
-        const artifactStore = db.createObjectStore('artifactListing', {
-          keyPath: 'taskId',
-        });
-        artifactStore.createIndex('artifactListing', 'artifactListing', {
-          unique: true,
-        });
+      const tables = [
+        { name: 'taskGroups', keyPath: 'taskGroupId' },
+        { name: 'artifactListing', keyPath: 'taskId' },
+        { name: 'artifactText', keyPath: ['taskId', 'path'] },
+      ];
+      for (const { name, keyPath } of tables) {
+        const objectStore = db.createObjectStore(name, { keyPath });
+        objectStore.createIndex(name, keyPath, { unique: true });
       }
     };
 

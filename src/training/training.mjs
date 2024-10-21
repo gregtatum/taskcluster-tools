@@ -1,5 +1,6 @@
 import { exposeAsGlobal, getElement, replaceLocation } from '../utils.mjs';
 import { isTaskGroupIdValid } from '../taskcluster.mjs';
+import { TaskclusterDB } from '../taskcluster-db.mjs';
 
 const server = 'https://firefox-ci-tc.services.mozilla.com';
 
@@ -27,6 +28,7 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 async function main() {
+  const db = await TaskclusterDB.open();
   elements.showAll.checked = getShowAll();
   elements.showAll.addEventListener('click', () => {
     const urlParams = new URLSearchParams(window.location.search);
@@ -118,7 +120,7 @@ async function main() {
     });
   }
 
-  buildTable();
+  buildTable(db);
 }
 
 /**
@@ -217,7 +219,10 @@ function createTableRow(tbody) {
   };
 }
 
-function buildTable() {
+/**
+ * @param {TaskclusterDB} db
+ */
+function buildTable(db) {
   /**
    * Each task group here belongs to a language pair, and we need to assemble
    * various runs together into a single row on the table.
@@ -263,6 +268,7 @@ function buildTable() {
 
           tr.dataset.taskGroupId = taskGroupId;
           await buildTableRow(
+            db,
             createTD,
             taskGroupId,
             taskGroupsByLangPair,
@@ -490,6 +496,7 @@ async function updateCometTD(td, langPair, score, taskId) {
  * the rows may be hidden. This function contains the most complicated logic. At the end
  * of it the rows are all sorted.
  *
+ * @param {TaskclusterDB} db
  * @param {(text: string | Element) => HTMLTableCellElement} createTD
  * @param {string} taskGroupId
  * @param {Map<string, Array<TaskAndStatus[]>>} taskGroupsByLangPair
@@ -497,6 +504,7 @@ async function updateCometTD(td, langPair, score, taskId) {
  * @param {boolean} isHidden
  */
 async function buildTableRow(
+  db,
   createTD,
   taskGroupId,
   taskGroupsByLangPair,
@@ -504,7 +512,7 @@ async function buildTableRow(
   isHidden,
 ) {
   const taskGroup = await fetchTaskGroup(taskGroupId);
-  const experimentName = await getExperimentName(trainActionTask);
+  const experimentName = await getExperimentName(db, trainActionTask);
   const tasks = taskGroup.tasks;
   const taskGroupUrl = `${server}/tasks/groups/${taskGroupId}`;
   const taskGroupNames = getTaskGroupNames();
@@ -558,7 +566,7 @@ async function buildTableRow(
   }
 
   // Attempt to find a langpair
-  const langPair = await getLangPair(trainActionTask);
+  const langPair = await getLangPair(db, trainActionTask);
 
   {
     // Keep track of this list.
@@ -576,7 +584,7 @@ async function buildTableRow(
     button.innerHTML = 'config';
     button.addEventListener(
       'click',
-      copyConfigHandler(button, trainActionTask),
+      copyConfigHandler(db, button, trainActionTask),
     );
     const a = document.createElement('a');
     a.innerText = langPair;
@@ -655,22 +663,19 @@ async function buildTableRow(
       // as the task may have failed or be outdated, but its score is still valid.
       td.innerText = '';
       const { taskId } = evalTask.status;
-      fetchArtifact(
-        taskId,
-        'public/build/devtest.metrics.json',
-        'json',
-        true /* cache */,
-      ).then((metrics) => {
-        const score = metrics?.comet?.score;
-        scoreList.push({
-          langPair,
-          score,
-          created: new Date(evalTask.task.created),
-          taskId,
-        });
-        updateCometTD(td, langPair, score, taskId);
-        updateScores();
-      });
+      db.getArtifactJSON(taskId, 'public/build/devtest.metrics.json').then(
+        (metrics) => {
+          const score = metrics?.comet?.score;
+          scoreList.push({
+            langPair,
+            score,
+            created: new Date(evalTask.task.created),
+            taskId,
+          });
+          updateCometTD(td, langPair, score, taskId);
+          updateScores();
+        },
+      );
     } else if (trainTask) {
       scoreList.push({
         langPair,
@@ -855,53 +860,20 @@ function getHiddenTaskGroups() {
 }
 
 /**
- * Fetch an artifact, and optionally cache the results.
- *
- * @param {string} taskId
- * @param {string} artifactPath
- * @param {"text" | "json"} returnType
- * @param {boolean} cache
- * @returns {Promise<any>}
- */
-async function fetchArtifact(taskId, artifactPath, returnType, cache) {
-  const taskUrl = `${server}/api/queue/v1/task/${taskId}/artifacts/${artifactPath}`;
-  console.log('Fetching', taskUrl);
-  const cacheKey = `cache-artifact-${taskUrl}`;
-  if (cache) {
-    const cached = localStorage.getItem(cacheKey);
-    if (cached) {
-      return returnType === 'text' ? cached : JSON.parse(cached);
-    }
-  }
-  const response = await fetch(taskUrl);
-  if (returnType === 'text') {
-    const text = await response.text();
-    if (cache) {
-      localStorage.setItem(cacheKey, text);
-    }
-    return text;
-  }
-
-  const json = await response.json();
-  if (cache) {
-    localStorage.setItem(cacheKey, JSON.stringify(json));
-  }
-  return json;
-}
-
-/**
  * Fetch the yml config for a training action.
  *
+ * @param {TaskclusterDB} db
  * @param {TaskAndStatus} trainActionTask
  * @returns {Promise<string>}
  */
-async function getConfigText(trainActionTask) {
-  const configText = await fetchArtifact(
+async function getConfigText(db, trainActionTask) {
+  const configText = await db.getArtifactText(
     trainActionTask.status.taskId,
     'public/parameters.yml',
-    'text',
-    true /* cache */,
   );
+  if (!configText) {
+    return '';
+  }
 
   // Extract the config
   const parts = configText.split('\ntraining_config:\n');
@@ -921,11 +893,12 @@ async function getConfigText(trainActionTask) {
 /**
  * Fetch the yml config for a training action.
  *
+ * @param {TaskclusterDB} db
  * @param {TaskAndStatus} trainActionTask
  * @returns {Promise<string>}
  */
-async function getExperimentName(trainActionTask) {
-  const text = await getConfigText(trainActionTask);
+async function getExperimentName(db, trainActionTask) {
+  const text = await getConfigText(db, trainActionTask);
   const experimentText = text.split('\nexperiment:\n')[1] ?? '';
   const nameText = experimentText.split('name:')[1] ?? '';
   return nameText.split('\n')[0] ?? '';
@@ -934,11 +907,12 @@ async function getExperimentName(trainActionTask) {
 /**
  * Fetch the yml config for a training action.
  *
+ * @param {TaskclusterDB} db
  * @param {TaskAndStatus} trainActionTask
  * @returns {Promise<string>}
  */
-async function getLangPair(trainActionTask) {
-  const text = await getConfigText(trainActionTask);
+async function getLangPair(db, trainActionTask) {
+  const text = await getConfigText(db, trainActionTask);
   const experimentText = text.split('\nexperiment:\n')[1] ?? '';
   const srcText = experimentText.split('  src:')[1] ?? '';
   const src = srcText.split('\n')[0] ?? '';
@@ -948,16 +922,19 @@ async function getLangPair(trainActionTask) {
 }
 
 /**
+ * @param {TaskclusterDB} db
  * @param {HTMLButtonElement} button
  * @param {TaskAndStatus} trainActionTask
  */
-function copyConfigHandler(button, trainActionTask) {
+function copyConfigHandler(db, button, trainActionTask) {
   return async () => {
     try {
       button.innerText = 'downloading...';
       button.disabled = true;
 
-      await navigator.clipboard.writeText(await getConfigText(trainActionTask));
+      await navigator.clipboard.writeText(
+        await getConfigText(db, trainActionTask),
+      );
 
       button.innerText = 'config copied';
       button.disabled = false;

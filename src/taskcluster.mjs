@@ -670,3 +670,45 @@ export async function listArtifacts(server, taskId, runId) {
 
   return response.json();
 }
+
+/**
+ * Fetch an artifact, and optionally cache the results.
+ *
+ * @param {string} server
+ * @param {string} taskId
+ * @param {string} artifactPath
+ * @param {"text" | "json"} returnType
+ * @param {boolean} cache
+ * @returns {Promise<any>}
+ */
+export async function fetchArtifact(
+  server,
+  taskId,
+  artifactPath,
+  returnType,
+  cache,
+) {
+  const taskUrl = `${server}/api/queue/v1/task/${taskId}/artifacts/${artifactPath}`;
+  console.log('Fetching', taskUrl);
+  const cacheKey = `cache-artifact-${taskUrl}`;
+  if (cache) {
+    const cached = localStorage.getItem(cacheKey);
+    if (cached) {
+      return returnType === 'text' ? cached : JSON.parse(cached);
+    }
+  }
+  const response = await fetch(taskUrl);
+  if (returnType === 'text') {
+    const text = await response.text();
+    if (cache) {
+      localStorage.setItem(cacheKey, text);
+    }
+    return text;
+  }
+
+  const json = await response.json();
+  if (cache) {
+    localStorage.setItem(cacheKey, JSON.stringify(json));
+  }
+  return json;
+}

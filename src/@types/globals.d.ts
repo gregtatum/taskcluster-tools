@@ -261,3 +261,12 @@ interface ArtifactListing {
     monthBytes: number | null
   }>
 }
+
+/**
+ * Stored in the IndexedDB.
+ */
+interface ArtifactText {
+  taskId: string,
+  path: string,
+  text: string
+}
