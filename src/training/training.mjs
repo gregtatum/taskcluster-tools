@@ -495,6 +495,7 @@ async function buildTableRow(
   isHidden,
 ) {
   const taskGroup = await fetchTaskGroup(taskGroupId);
+  const experimentName = await getExperimentName(trainActionTask);
   const tasks = taskGroup.tasks;
   const taskGroupUrl = `${server}/tasks/groups/${taskGroupId}`;
   const taskGroupNames = getTaskGroupNames();
@@ -552,10 +553,11 @@ async function buildTableRow(
 
   {
     // Keep track of this list.
-    let list = taskGroupsByLangPair.get(langPair);
+    const key = `${experimentName}-${langPair}`;
+    let list = taskGroupsByLangPair.get(key);
     if (!list) {
       list = [];
-      taskGroupsByLangPair.set(langPair, list);
+      taskGroupsByLangPair.set(key, list);
     }
     list.push(tasks);
   }
@@ -571,7 +573,8 @@ async function buildTableRow(
     a.innerText = langPair;
     a.href = `https://wandb.ai/moz-translations/${langPair}/workspace`;
     a.target = '_blank';
-    const td = createTD(a);
+    const td = createTD(experimentName + ' ');
+    td.appendChild(a);
 
     // Add a hidden date for sorting.
     const hiddenDate = document.createElement('span');
@@ -878,6 +881,48 @@ async function fetchArtifact(taskId, artifactPath, returnType, cache) {
 }
 
 /**
+ * Fetch the yml config for a training action.
+ *
+ * @param {TaskAndStatus} trainActionTask
+ * @returns {Promise<string>}
+ */
+async function getConfigText(trainActionTask) {
+  const configText = await fetchArtifact(
+    trainActionTask.status.taskId,
+    'public/parameters.yml',
+    'text',
+    true /* cache */,
+  );
+
+  // Extract the config
+  const parts = configText.split('\ntraining_config:\n');
+
+  // Collect all the lines of the same indent level
+  let finalConfig = '';
+  for (const line of parts[1].split('\n')) {
+    if (line.startsWith('  ')) {
+      finalConfig += line.slice(2) + '\n';
+    } else {
+      break;
+    }
+  }
+  return finalConfig;
+}
+
+/**
+ * Fetch the yml config for a training action.
+ *
+ * @param {TaskAndStatus} trainActionTask
+ * @returns {Promise<string>}
+ */
+async function getExperimentName(trainActionTask) {
+  const text = await getConfigText(trainActionTask);
+  const experimentText = text.split('\nexperiment:\n')[1] ?? '';
+  const nameText = experimentText.split('name:')[1] ?? '';
+  return nameText.split('\n')[0] ?? '';
+}
+
+/**
  * @param {HTMLButtonElement} button
  * @param {TaskAndStatus} trainActionTask
  */
@@ -887,28 +932,7 @@ function copyConfigHandler(button, trainActionTask) {
       button.innerText = 'downloading...';
       button.disabled = true;
 
-      /** @type {string} */
-      const configText = await fetchArtifact(
-        trainActionTask.status.taskId,
-        'public/parameters.yml',
-        'text',
-        true /* cache */,
-      );
-
-      // Extract the config
-      const parts = configText.split('\ntraining_config:\n');
-
-      // Collect all the lines of the same indent level
-      let finalConfig = '';
-      for (const line of parts[1].split('\n')) {
-        if (line.startsWith('  ')) {
-          finalConfig += line.slice(2) + '\n';
-        } else {
-          break;
-        }
-      }
-
-      await navigator.clipboard.writeText(finalConfig);
+      await navigator.clipboard.writeText(await getConfigText(trainActionTask));
 
       button.innerText = 'config copied';
       button.disabled = false;
