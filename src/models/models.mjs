@@ -152,17 +152,24 @@ function addToRow(td, pair, records, cometResults, model) {
 
   const hasEvals = bergamotComet && googleComet;
 
+  const bergamotCometDisplay = (100 * bergamotComet).toFixed(2);
   const percentage = 100 * (1 - googleComet / bergamotComet);
   const sign = percentage >= 0 ? '+' : '';
-  const percentageDisplay = hasEvals ? `${sign}${percentage.toFixed(2)}%` : '';
-
+  let scoreDisplay = '';
+  if (hasEvals) {
+    const percentDisplay = `${sign}${percentage.toFixed(2)}%`.padStart(
+      7,
+      '\u00A0',
+    );
+    scoreDisplay = `${bergamotCometDisplay} ${percentDisplay}`;
+  }
   const avgPercentage = 100 * (1 - googleCometAvg / bergamotCometAvg);
   const avgSign = avgPercentage >= 0 ? '+' : '';
   const avgPercentageDisplay = hasEvals
     ? `${avgSign}${avgPercentage.toFixed(2)}%`
     : '';
 
-  const el = td(percentageDisplay);
+  const el = td(scoreDisplay);
   if (hasEvals) {
     let shippable = 'Shippable';
     el.style.color = '#fff';
@@ -174,12 +181,12 @@ function addToRow(td, pair, records, cometResults, model) {
     }
 
     el.title =
-      `${shippable} - COMET ${bergamotComet.toFixed(4)} ` +
-      `vs Google Comet ${googleComet.toFixed(4)} ` +
-      `(${percentageDisplay})` +
+      `${shippable} - COMET ${(100 * bergamotComet).toFixed(2)} ` +
+      `vs Google Comet ${(100 * googleComet).toFixed(2)} ` +
+      `(${scoreDisplay})` +
       '\n\n' +
-      `avg COMET ${bergamotCometAvg.toFixed(4)} ` +
-      `vs Google avg Comet ${googleCometAvg.toFixed(4)} ` +
+      `avg COMET ${(100 * bergamotCometAvg).toFixed(2)} ` +
+      `vs Google avg Comet ${(100 * googleCometAvg).toFixed(2)} ` +
       `(${avgPercentageDisplay})`;
   }
 }

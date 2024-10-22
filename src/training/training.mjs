@@ -473,7 +473,7 @@ async function updateCometTD(td, langPair, score, taskId) {
   {
     const a = document.createElement('a');
     a.href = `https://firefox-ci-tc.services.mozilla.com/tasks/${taskId}`;
-    a.innerText = `${score}`;
+    a.innerText = `${(score * 100).toFixed(2)}`;
     a.style.color = '#fff';
     a.target = '_blank';
     td.appendChild(a);
