@@ -357,7 +357,7 @@ function updateScores() {
     // Do not update all of the scores if the scores are all shown.
     return;
   }
-  for (const [name, scoresList] of Object.entries(scores)) {
+  for (const [key, scoresList] of Object.entries(scores)) {
     /**
      * Compute the latest scores for each language pair.
      *
@@ -377,7 +377,7 @@ function updateScores() {
     // Update the COMET scores for a TD, or note that an eval score is still needed.
     for (const { langPair, score, taskId } of latestScores.values()) {
       for (const element of Array.from(
-        document.querySelectorAll(`[data-${name}=${langPair}]`),
+        document.querySelectorAll(`[data-${key}=${langPair}]`),
       )) {
         const td = /** @type {HTMLTableCellElement} */ (element);
         if (score === null) {
@@ -685,7 +685,7 @@ async function buildTableRow(
       });
     }
 
-    td.setAttribute(`data-${name}`, langPair);
+    td.setAttribute(`data-${name}`, `${experimentName}-${langPair}`);
   }
 
   console.log(langPair, tasks);
