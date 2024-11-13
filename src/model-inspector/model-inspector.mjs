@@ -302,6 +302,14 @@ function displayArrays(arrays, byteSize) {
       createTD(end);
     }
   }
+  if (configText) {
+    const typeMatch = configText.match(/^type:\s*(.*)$/m);
+    if (typeMatch) {
+      const { createTD } = createTableRow(elements.tbodyDetails);
+      createTD('Model type');
+      createTD(typeMatch[1]);
+    }
+  }
   {
     const { createTD } = createTableRow(elements.tbodyDetails);
     createTD('Model size');
@@ -323,12 +331,6 @@ function displayArrays(arrays, byteSize) {
     createTD(decoderParameters.toLocaleString());
   }
   if (configText) {
-    const typeMatch = configText.match(/^type:\s*(.*)$/m);
-    if (typeMatch) {
-      const { createTD } = createTableRow(elements.tbodyDetails);
-      createTD('Model type');
-      createTD(typeMatch[1]);
-    }
     const { createTD } = createTableRow(elements.tbodyDetails);
     createTD('Model config');
     createTD(configText);
