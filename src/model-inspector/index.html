@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Marian Model Inspector</title>
+</head>
+<body id="dropZone">
+  <script src="../../assets/zip.min.js"></script>
+  <script src='./model-inspector.mjs' type="module"></script>
+  <link rel="stylesheet" href="./model-inspector.css">
+  <h2>Marian Model Inspector</h2>
+  <p style='max-width: 500px; line-height: 1.5;'>
+    Inspect models in the Marian npz format.
+  </p>
+  <div>
+    <label for="url">Model URL</label><br/>
+    <input id="url" type="text"></input>
+  </div>
+  <div id="status"></div>
+  <div id="results">
+    <table>
+      <thead>
+        <thead>
+          <tr>
+            <th>Detail</th>
+            <th>Value</th>
+          </tr>
+        </thead>
+      </thead>
+      <tbody id="tbodyDetails">
+      </tbody>
+    </table>
+    <h3>Parameters</h3>
+    <table>
+      <thead>
+        <thead>
+          <tr>
+            <th>Key</th>
+            <th>Data Type</th>
+            <th>Size</th>
+            <th>Data</th>
+          </tr>
+        </thead>
+      </thead>
+      <tbody id="tbodyParams">
+      </tbody>
+    </table>
+  </div>
+</body>
+</html>
