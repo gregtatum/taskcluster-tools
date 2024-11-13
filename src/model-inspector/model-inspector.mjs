@@ -262,6 +262,8 @@ function displayArrays(arrays, byteSize) {
   }
 
   let totalParameters = 0;
+  let encoderParameters = 0;
+  let decoderParameters = 0;
   for (const [key, { dtype, data, shape }] of Object.entries(arrays)) {
     const { createTD } = createTableRow(elements.tbodyParams);
     createTD(key);
@@ -281,6 +283,12 @@ function displayArrays(arrays, byteSize) {
         parameters *= dimension;
       }
       totalParameters += parameters;
+      if (key.startsWith('encoder_')) {
+        encoderParameters += parameters;
+      }
+      if (key.startsWith('decoder_')) {
+        decoderParameters += parameters;
+      }
     }
   }
 
@@ -303,6 +311,16 @@ function displayArrays(arrays, byteSize) {
     const { createTD } = createTableRow(elements.tbodyDetails);
     createTD('Parameters');
     createTD(totalParameters.toLocaleString());
+  }
+  {
+    const { createTD } = createTableRow(elements.tbodyDetails);
+    createTD('Encoder parameters');
+    createTD(encoderParameters.toLocaleString());
+  }
+  {
+    const { createTD } = createTableRow(elements.tbodyDetails);
+    createTD('Decoder parameters');
+    createTD(decoderParameters.toLocaleString());
   }
   if (configText) {
     const typeMatch = configText.match(/^type:\s*(.*)$/m);
