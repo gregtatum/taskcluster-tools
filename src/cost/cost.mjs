@@ -340,7 +340,7 @@ function buildTaskGroupRow(taskGroupId, taskGroupName, insertBefore) {
 async function ensureTaskGroupExists(taskGroupId) {
   const taskGroups = await taskGroupsPromise;
   if (!taskGroups.find((taskGroup) => taskGroup.taskGroupId === taskGroupId)) {
-    return [...taskGroups, await fetchTaskGroup(server, taskGroupId)];
+    return [...taskGroups, await fetchTaskGroup(server, taskGroupId, () => {})];
   }
   return taskGroups;
 }
