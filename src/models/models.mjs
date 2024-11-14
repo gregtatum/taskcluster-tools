@@ -1,4 +1,4 @@
-import { exposeAsGlobal } from '../utils.mjs';
+import { changeLocation, exposeAsGlobal } from '../utils.mjs';
 
 main().catch((error) => {
   console.error(error);
@@ -38,9 +38,27 @@ async function fetchJSON(url) {
 async function main() {
   getById('counts').style.display = 'table';
 
+  const remoteSettingsPreviewCheckbox = /** @type {HTMLInputElement} */ (
+    getById('remoteSettingsPreview')
+  );
+  const urlParams = new URLSearchParams(window.location.search);
+  const isPreview = urlParams.get('preview');
+  remoteSettingsPreviewCheckbox.checked = isPreview === 'true';
+  remoteSettingsPreviewCheckbox.addEventListener('change', () => {
+    const urlParams = new URLSearchParams(window.location.search);
+    if (remoteSettingsPreviewCheckbox.checked) {
+      urlParams.set('preview', 'true');
+    } else {
+      urlParams.delete('preview');
+    }
+    changeLocation(urlParams);
+  });
+
+  const bucket = isPreview ? 'main-preview' : 'main';
+
   /** @type {{ data: ModelRecord[] }} */
   const records = await fetchJSON(
-    'https://firefox.settings.services.mozilla.com/v1/buckets/main/collections/translations-models/records',
+    `https://firefox.settings.services.mozilla.com/v1/buckets/${bucket}/collections/translations-models/records`,
   );
   exposeAsGlobal('records', records.data);
 
