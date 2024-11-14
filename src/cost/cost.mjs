@@ -8,6 +8,7 @@ import {
   exposeAsGlobal,
   getElement,
   replaceLocation,
+  changeLocation,
 } from '../utils.mjs';
 const server = 'https://firefox-ci-tc.services.mozilla.com';
 
@@ -492,17 +493,6 @@ function getIgnoredTaskGroupIds() {
   // Parse the taskGroupId values into an array
   const taskGroupIds = taskGroupIdParam.split(',');
   return taskGroupIds;
-}
-
-/**
- * @param {URLSearchParams} urlParams
- */
-function changeLocation(urlParams) {
-  const url = new URL(window.location.href);
-  const newLocation = `${url.origin}${url.pathname}?${urlParams}`;
-
-  // @ts-ignore
-  window.location = newLocation;
 }
 
 /**

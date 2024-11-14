@@ -5,6 +5,7 @@ import {
   exposeAsGlobal,
   getServer,
   getElement,
+  changeLocation,
 } from '../utils.mjs';
 
 // Work around ts(2686)
@@ -263,17 +264,6 @@ function getTaskGroupIds() {
   // Parse the taskGroupId values into an array
   const taskGroupIds = taskGroupIdParam.split(',');
   return taskGroupIds;
-}
-
-/**
- * @param {URLSearchParams} urlParams
- */
-function changeLocation(urlParams) {
-  const url = new URL(window.location.href);
-  const newLocation = `${url.origin}${url.pathname}?${urlParams}`;
-
-  // @ts-ignore
-  window.location = newLocation;
 }
 
 /**

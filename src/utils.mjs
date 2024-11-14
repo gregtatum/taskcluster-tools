@@ -242,3 +242,14 @@ export function replaceLocation(urlParams) {
   const newLocation = `${url.origin}${url.pathname}?${urlParams}`;
   history.replaceState(null, '', newLocation);
 }
+
+/**
+ * @param {URLSearchParams} urlParams
+ */
+export function changeLocation(urlParams) {
+  const url = new URL(window.location.href);
+  const newLocation = `${url.origin}${url.pathname}?${urlParams}`;
+
+  // @ts-ignore
+  window.location = newLocation;
+}

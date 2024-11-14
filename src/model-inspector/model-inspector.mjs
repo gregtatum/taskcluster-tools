@@ -1,4 +1,10 @@
-import { createTableRow, getElement, replaceLocation } from '../utils.mjs';
+import {
+  createTableRow,
+  getElement,
+  changeLocation,
+  replaceLocation,
+  exposeAsGlobal,
+} from '../utils.mjs';
 
 /** @type {any} */
 // @ts-ignore
@@ -218,7 +224,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (event.key === 'Enter') {
       const urlParams = new URLSearchParams(window.location.search);
       urlParams.set('url', url);
-      replaceLocation(urlParams);
+      changeLocation(urlParams);
       if (url) {
         fetchModel(url).catch(console.error);
       } else {

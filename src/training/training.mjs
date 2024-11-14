@@ -1,4 +1,9 @@
-import { exposeAsGlobal, getElement, replaceLocation } from '../utils.mjs';
+import {
+  exposeAsGlobal,
+  getElement,
+  replaceLocation,
+  changeLocation,
+} from '../utils.mjs';
 import { isTaskGroupIdValid } from '../taskcluster.mjs';
 import { TaskclusterDB } from '../taskcluster-db.mjs';
 
@@ -996,17 +1001,6 @@ function getTrainTaskGroups() {
     namesFinal.push({ taskGroupId: ids[i], name });
   }
   return namesFinal;
-}
-
-/**
- * @param {URLSearchParams} urlParams
- */
-function changeLocation(urlParams) {
-  const url = new URL(window.location.href);
-  const newLocation = `${url.origin}${url.pathname}?${urlParams}`;
-
-  // @ts-ignore
-  window.location = newLocation;
 }
 
 let isScheduled = false;
