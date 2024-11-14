@@ -36,11 +36,16 @@ async function fetchJSON(url) {
 }
 
 async function main() {
+  getById('counts').style.display = 'table';
+
   /** @type {{ data: ModelRecord[] }} */
   const records = await fetchJSON(
     'https://firefox.settings.services.mozilla.com/v1/buckets/main/collections/translations-models/records',
   );
   exposeAsGlobal('records', records.data);
+
+  const attachmentsByKey = getAttachmentsByKey(records.data);
+  countModels(records.data);
 
   /** @type {EvalResults} */
   const cometResults = await fetchJSON(
@@ -52,6 +57,7 @@ async function main() {
   /**
    * @typedef {Object} ModelEntry
    * @property {string} lang
+   * @property {string} version
    * @property {string} display
    * @property {ModelRecord[]} fromEn
    * @property {ModelRecord[]} toEn
@@ -68,10 +74,11 @@ async function main() {
     /** @type {ModelEntry | undefined} */
     let entry;
     if (model.fromLang === 'en') {
-      entry = modelsMap.get(model.toLang);
+      entry = modelsMap.get(model.toLang + ' ' + model.version);
       if (!entry) {
         entry = {
           lang: model.toLang,
+          version: model.version,
           display: dn.of(model.toLang) ?? model.toLang,
           toEn: [],
           fromEn: [],
@@ -79,10 +86,11 @@ async function main() {
       }
       entry.fromEn.push(model);
     } else {
-      entry = modelsMap.get(model.fromLang);
+      entry = modelsMap.get(model.fromLang + ' ' + model.version);
       if (!entry) {
         entry = {
           lang: model.fromLang,
+          version: model.version,
           display: dn.of(model.fromLang) ?? model.fromLang,
           toEn: [],
           fromEn: [],
@@ -90,7 +98,7 @@ async function main() {
       }
       entry.toEn.push(model);
     }
-    modelsMap.set(entry.lang, entry);
+    modelsMap.set(entry.lang + ' ' + model.version, entry);
   }
 
   const tbody = getById('tbody');
@@ -108,7 +116,7 @@ async function main() {
   for (const { lang, toEn, fromEn } of modelEntries) {
     const tr = document.createElement('tr');
     /**
-     * @param {string} [text]
+     * @param {string | HTML} [text]
      */
     const td = (text = '') => {
       const el = document.createElement('td');
@@ -118,8 +126,22 @@ async function main() {
     };
     td(dn.of(lang));
 
-    addToRow(td, `${lang}-en`, records.data, cometResults, toEn[0]);
-    addToRow(td, `en-${lang}`, records.data, cometResults, fromEn[0]);
+    addToRow(
+      td,
+      `${lang}-en`,
+      records.data,
+      cometResults,
+      attachmentsByKey,
+      toEn[0],
+    );
+    addToRow(
+      td,
+      `en-${lang}`,
+      records.data,
+      cometResults,
+      attachmentsByKey,
+      fromEn[0],
+    );
     tbody.append(tr);
   }
   getById('loading').style.display = 'none';
@@ -131,13 +153,47 @@ async function main() {
  * @param {string} pair
  * @param {ModelRecord[]} records
  * @param {EvalResults} cometResults
+ * @param {Map<string, Array<[string, string]>>} attachmentsByKey
  * @param {ModelRecord} [model]
  */
-function addToRow(td, pair, records, cometResults, model) {
+function addToRow(td, pair, records, cometResults, attachmentsByKey, model) {
+  const modelNameTD = td();
   if (model) {
-    td(pair);
-  } else {
-    td();
+    // Add the attachments.
+    const attachments = attachmentsByKey.get(getAttachmentKey(model));
+    if (attachments) {
+      const div = document.createElement('div');
+      div.className = 'attachments';
+      for (const [name, url] of attachments) {
+        const a = document.createElement('a');
+        a.innerText = name;
+        a.href = url;
+        div.appendChild(a);
+      }
+      const button = document.createElement('button');
+      button.innerText = pair;
+
+      // Hide when clicking outside of the button and popup.
+      document.body.addEventListener('click', (event) => {
+        const target = /** @type {Node | null} */ (event.target);
+        if (target && !div.contains(target) && target !== button) {
+          div.style.display = 'none';
+        }
+      });
+
+      button.addEventListener('click', () => {
+        if (div.style.display === 'block') {
+          div.style.display = 'none';
+        } else {
+          div.style.display = 'block';
+        }
+      });
+
+      modelNameTD.appendChild(button);
+      modelNameTD.appendChild(div);
+    } else {
+      modelNameTD.innerText = pair;
+    }
   }
 
   td(model?.version);
@@ -412,4 +468,71 @@ function logCometResults(cometResults) {
   }
 
   console.log(tsv);
+}
+
+/**
+ * @param {ModelRecord} record
+ */
+function getAttachmentKey(record) {
+  const { fromLang, toLang, version } = record;
+  return `${fromLang}-${toLang} ${version}`;
+}
+
+/**
+ * @param {ModelRecord[]} records
+ */
+function getAttachmentsByKey(records) {
+  /** @type {Map<string, Array<[string, string]>>} */
+  const attachmentsByKey = new Map();
+  for (const record of records) {
+    const key = getAttachmentKey(record);
+    let attachments = attachmentsByKey.get(key);
+    if (!attachments) {
+      attachments = [];
+      attachmentsByKey.set(key, attachments);
+    }
+    attachments.push([
+      record.name,
+      `https://firefox-settings-attachments.cdn.mozilla.net/${record.attachment.location}`,
+    ]);
+  }
+  return attachmentsByKey;
+}
+
+/**
+ * @param {ModelRecord[]} records
+ */
+function countModels(records) {
+  const fromProd = new Set();
+  const fromNightly = new Set();
+  const toProd = new Set();
+  const toNightly = new Set();
+
+  for (const record of records) {
+    console.log(`!!! record`, record.filter_expression);
+    const isRelease =
+      !record.filter_expression ||
+      record.filter_expression.includes("env.channel == 'release'");
+    if (record.fromLang == 'en') {
+      if (isRelease) {
+        toProd.add(record.toLang);
+      } else {
+        toNightly.add(record.toLang);
+      }
+    } else {
+      if (isRelease) {
+        fromProd.add(record.fromLang);
+      } else {
+        fromNightly.add(record.fromLang);
+      }
+    }
+  }
+
+  const toNightlyOnly = toNightly.difference(toProd);
+  const fromNightlyOnly = fromNightly.difference(fromProd);
+
+  getById('fromProd').innerText = String(fromProd.size);
+  getById('toProd').innerText = String(toProd.size);
+  getById('fromNightly').innerText = String(toNightlyOnly.size);
+  getById('toNightly').innerText = String(fromNightlyOnly.size);
 }

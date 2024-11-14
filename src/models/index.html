@@ -18,6 +18,28 @@
   <p id="loading">Fetching the models…</p>
   <p id="error">Error fetching the models. See the console log.</p>
 
+  <table id="counts">
+    <thead>
+      <tr>
+        <th>Model Counts</th>
+        <th>xx-en</th>
+        <th>en-xx</th>
+      </tr>
+    </thead>
+    <tbody id="countTbody">
+      <tr>
+        <th>Release</th>
+        <td id="fromProd"></td>
+        <td id="toProd"></td>
+      </tr>
+      <tr>
+        <th>Nightly</th>
+        <td id="fromNightly"></td>
+        <td id="toNightly"></td>
+      </tr>
+    </tbody>
+  </table>
+
   <table class="models" id="table">
     <thead>
       <tr>
