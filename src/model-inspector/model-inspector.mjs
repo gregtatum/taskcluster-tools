@@ -246,7 +246,14 @@ async function fetchModel(url) {
     const response = await fetch(url);
     updateStatus('Processing model…');
     const arrayBuffer = await response.arrayBuffer();
-    processUnknownArrayBuffer(arrayBuffer);
+
+    const fileName = (url.split('/').pop() ?? '').replace(
+      // This is part of Taskcluster build artifacts, just remove it.
+      'public%2Fbuild%2F',
+      '',
+    );
+
+    processUnknownArrayBuffer(arrayBuffer, fileName);
   } catch (error) {
     console.error('Could not parse as npz', error);
     updateStatus('Failed to fetch the file');
@@ -255,8 +262,9 @@ async function fetchModel(url) {
 
 /**
  * @param {ArrayBuffer} arrayBuffer
+ * @param {string} fileName
  */
-async function processUnknownArrayBuffer(arrayBuffer) {
+async function processUnknownArrayBuffer(arrayBuffer, fileName) {
   try {
     const { byteLength } = arrayBuffer;
     let arrays;
@@ -266,11 +274,11 @@ async function processUnknownArrayBuffer(arrayBuffer) {
       console.error(`Could not parse as Marian bin file`, error);
       arrays = await readZipFile(arrayBuffer);
     }
-    console.log(arrays);
+    exposeAsGlobal('data', arrays);
     updateStatus('Determining compressed size…');
     const compressedSize = await getCompressedSize(arrayBuffer);
     elements.status.style.display = 'hidden';
-    displayArrays(arrays, byteLength, compressedSize);
+    displayArrays(arrays, byteLength, compressedSize, fileName);
   } catch (error) {
     console.error(error);
     updateStatus('Failed to process the file. See the web console.');
@@ -282,10 +290,15 @@ async function processUnknownArrayBuffer(arrayBuffer) {
  */
 async function handleFileDrop(file) {
   clearUI();
+  elements.url.value = '';
+  const urlParams = new URLSearchParams(window.location.search);
+  urlParams.delete('url');
+  replaceLocation(urlParams);
+
   try {
     updateStatus('Processing dropped model file…');
     const arrayBuffer = await file.arrayBuffer();
-    processUnknownArrayBuffer(arrayBuffer);
+    processUnknownArrayBuffer(arrayBuffer, file.name);
   } catch (error) {
     console.error(error);
     updateStatus('Failed ' + error);
@@ -303,8 +316,9 @@ async function handleFileDrop(file) {
  * @param {Record<string, DataArrays>} arrays
  * @param {number} byteSize
  * @param {number} compressedSize
+ * @param {string} fileName
  */
-function displayArrays(arrays, byteSize, compressedSize) {
+function displayArrays(arrays, byteSize, compressedSize, fileName) {
   elements.results.style.display = 'block';
 
   let configText = '';
@@ -361,21 +375,20 @@ function displayArrays(arrays, byteSize, compressedSize) {
   }
 
   {
-    const urlParams = new URLSearchParams(window.location.search);
-    const url = urlParams.get('url');
-    if (url) {
-      const end = url.split('/').pop();
-      const { createTD } = createTableRow(elements.tbodyDetails);
-      createTD('File name');
-      createTD(end);
-    }
+    const { createTD } = createTableRow(elements.tbodyDetails);
+    createTD('File name');
+    createTD(fileName);
   }
   if (configText) {
     const typeMatch = configText.match(/^type:\s*(.*)$/m);
+    const encMatch = configText.match(/^enc-cell:\s*(.*)$/m);
+    const decMatch = configText.match(/^dec-cell:\s*(.*)$/m);
     if (typeMatch) {
       const { createTD } = createTableRow(elements.tbodyDetails);
       createTD('Model type');
-      createTD(typeMatch[1]);
+      const cellTypes =
+        encMatch && decMatch ? `(${encMatch[1]} - ${decMatch[1]})` : '';
+      createTD(`${typeMatch[1]} ${cellTypes}`);
     }
   }
   {
