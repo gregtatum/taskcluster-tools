@@ -499,7 +499,7 @@ function setupProfilerButton(taskGroups, taskClusterURL) {
      * @param {MessageEvent} event
      */
     const listener = ({ data }) => {
-      if (data?.name === 'is-ready') {
+      if (data?.name === 'ready:response') {
         console.log('The profiler is ready. Injecting the profile.');
         isReady = true;
         const message = {
@@ -514,7 +514,7 @@ function setupProfilerButton(taskGroups, taskClusterURL) {
     window.addEventListener('message', listener);
     while (!isReady) {
       await new Promise((resolve) => setTimeout(resolve, 100));
-      profilerWindow.postMessage({ name: 'is-ready' }, profilerOrigin);
+      profilerWindow.postMessage({ name: 'ready:request' }, profilerOrigin);
     }
 
     window.removeEventListener('message', listener);
