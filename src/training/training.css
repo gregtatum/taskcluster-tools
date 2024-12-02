@@ -43,6 +43,10 @@ td, th {
     display: inline-block;
     margin: -3px 0 -3px 10px;
     border-radius: 3px;
+
+    tr:hover & {
+      background-color: #bbbbbbcc;
+    }
   }
 }
 
@@ -55,6 +59,10 @@ td:nth-child(2) {
   background-color: #eee;
   font-family: monospace;
   border-right: 2px solid #bebebe;
+
+  tr:hover & {
+    background-color: #ddd;
+  }
 }
 
 /* What is running */
@@ -68,6 +76,9 @@ td:nth-child(12),
 td:nth-child(13),
 td:nth-child(14) {
   background: #eee;
+  tr:hover & {
+    background-color: #ddd;
+  }
 }
 
 
@@ -127,4 +138,8 @@ td:nth-child(14) {
   box-sizing: border-box;
   font-size: 16px;
   padding: 5px;
+}
+
+tr:hover {
+  background-color: #f3f3f3;
 }
