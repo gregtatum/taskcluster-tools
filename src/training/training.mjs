@@ -724,16 +724,24 @@ async function buildTableRow(
    * Training is a complicated graph, but attempt to order the results here.
    */
   const orderedSteps = [
+    'Action: Cancel All',
     'dataset-',
     'translate-mono-',
     'clean-corpus-',
     'bicleaner-ai-',
     'train-backwards-',
+    'evaluate-backwards-',
     'alignments-backtranslated-',
     'train-teacher-',
+    'evaluate-teacher-',
     'alignments-student-',
+    'translate-corpus-',
     'train-student-',
+    'evaluate-student-',
     'finetune-student-',
+    'evaluate-finetune-student-',
+    'quantize-',
+    'evaluate-quantized-',
   ];
 
   /** @type {Record<string, "not-started" | "running" | "completed">} */
@@ -777,6 +785,10 @@ async function buildTableRow(
    * @param {string} [stage]
    */
   const addStateCount = (state, color, stage) => {
+    if (!stateCounts[state]) {
+      createTD('');
+      return;
+    }
     const a = document.createElement('a');
     a.innerText = String(stateCounts[state] ?? 0);
     a.target = '_blank';
@@ -826,7 +838,7 @@ async function buildTableRow(
   exception = exception.slice(0, exception.length - 1);
 
   addStateCount('completed', undefined, completed);
-  addStateCount('running', undefined, running);
+  addStateCount('running', '#1976d2', running);
   addStateCount('failed', '#f44336', failed);
   addStateCount('exception', '#ffa000', exception);
   addStateCount('pending');
