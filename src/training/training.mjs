@@ -742,6 +742,7 @@ async function buildTableRow(
     'evaluate-finetune-student-',
     'quantize-',
     'evaluate-quantized-',
+    'export-',
   ];
 
   /** @type {Record<string, "not-started" | "running" | "completed">} */
