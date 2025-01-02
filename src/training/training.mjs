@@ -294,7 +294,7 @@ function buildTable(db) {
   // Either hide or dim the older task groups depending on the value
   // of `showAll`.
   Promise.allSettled(fetchPromises).then(() => {
-    for (const taskGroups of taskGroupsByLangPair.values()) {
+    for (let taskGroups of taskGroupsByLangPair.values()) {
       // Sort newest to oldest
       taskGroups.sort((aList, bList) => {
         const a = aList[0].task.created;
@@ -302,8 +302,18 @@ function buildTable(db) {
         return a < b ? 1 : a > b ? -1 : 0;
       });
 
+      // Don't include hidden task groups.
+      if (!showAll) {
+        taskGroups = taskGroups.filter(
+          (taskGroup) =>
+            !hiddenTaskGroups.includes(taskGroup[0]?.task.taskGroupId),
+        );
+      }
+
       // Skip the first task group as it's the most recent, and shouldn't be dimmed.
-      for (const taskGroup of taskGroups.slice(1)) {
+      taskGroups = taskGroups.slice(1);
+
+      for (const taskGroup of taskGroups) {
         const { taskGroupId } = taskGroup[0].task;
         /** @type {HTMLElement | null} */
         const tr = document.querySelector(
