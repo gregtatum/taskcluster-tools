@@ -29,6 +29,9 @@ table {
   border-radius: 9px;
   overflow: hidden;
   box-shadow: 0 0 0 1px #666;
+}
+
+#table {
   min-width: 800px;
   width: 100%;
 }

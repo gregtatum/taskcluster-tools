@@ -95,6 +95,12 @@ function buildDatasetsTable(db, datasetTasks) {
   let listings = [];
   for (const taskAndStatus of datasetTasks) {
     const { task, status } = taskAndStatus;
+
+    if (task.metadata.name.includes('-flores-')) {
+      // Don't include evaluation datasets.
+      continue;
+    }
+
     const { createTD, tr } = createTableRow(elements.tbody);
     const a = document.createElement('a');
     a.innerText = task.metadata.name;
@@ -112,9 +118,16 @@ function buildDatasetsTable(db, datasetTasks) {
     frequencyButton.innerText = 'Get frequencies';
     frequencyButton.disabled = true;
 
+    const codepointButton = document.createElement('button');
+    codepointButton.innerText = 'Get codepoints';
+    codepointButton.disabled = true;
+
     const td = createTD();
     td.appendChild(sampleButton);
+    td.appendChild(new Text(' '));
     td.appendChild(frequencyButton);
+    td.appendChild(new Text(' '));
+    td.appendChild(codepointButton);
 
     listings.push(
       db.getArtifactListing(taskAndStatus).then((listing) => {
@@ -131,6 +144,7 @@ function buildDatasetsTable(db, datasetTasks) {
         }
         sampleButton.disabled = false;
         frequencyButton.disabled = false;
+        codepointButton.disabled = false;
 
         let size = 0;
         for (const dataset of datasets) {
@@ -143,12 +157,17 @@ function buildDatasetsTable(db, datasetTasks) {
 
         sampleButton.addEventListener(
           'click',
-          getSampleHandler(db, tr, datasets, taskAndStatus),
+          getSampleHandler(tr, datasets, taskAndStatus),
         );
 
         frequencyButton.addEventListener(
           'click',
-          analyzeFrequencyHandler(db, tr, datasets, taskAndStatus),
+          analyzeFrequencyHandler(tr, datasets, taskAndStatus),
+        );
+
+        codepointButton.addEventListener(
+          'click',
+          analyzeCodepointDistribution(tr, datasets, taskAndStatus),
         );
       }),
     );
@@ -175,12 +194,11 @@ function createAnalyticsElement(analyticsContainer) {
 }
 
 /**
- * @param {TaskclusterDB} db
  * @param {HTMLTableRowElement} tr
  * @param {Artifact[]} artifacts
  * @param {TaskAndStatus} datasetTask
  */
-function getSampleHandler(db, tr, artifacts, { status }) {
+function getSampleHandler(tr, artifacts, { status }) {
   let hasSample = false;
   /**
    * @param {Event} event
@@ -294,12 +312,11 @@ function ensureAnalyticsContainerAdded(tr) {
 }
 
 /**
- * @param {TaskclusterDB} db
  * @param {HTMLTableRowElement} tr
  * @param {Artifact[]} artifacts
  * @param {TaskAndStatus} datasetTask
  */
-function analyzeFrequencyHandler(db, tr, artifacts, { status }) {
+function analyzeFrequencyHandler(tr, artifacts, { status }) {
   /**
    * @param {Event} event
    */
@@ -349,6 +366,124 @@ function analyzeFrequencyHandler(db, tr, artifacts, { status }) {
 
     analyticsA.applyView(/** @type {HTMLDivElement} */ (analyticsPerLocale));
     analyticsB.applyView(/** @type {HTMLDivElement} */ (analyticsPerLocale));
+  };
+}
+
+/**
+ * @param {HTMLTableRowElement} tr
+ * @param {Artifact[]} artifacts
+ * @param {TaskAndStatus} datasetTask
+ */
+function analyzeCodepointDistribution(tr, artifacts, { status }) {
+  /**
+   * @param {Event} event
+   */
+  return async (event) => {
+    if (!event.target) {
+      return;
+    }
+    const button = /** @type {HTMLInputElement} */ (event.target);
+    button.disabled = true;
+
+    const { analyticsContainer } = ensureAnalyticsContainerAdded(tr);
+
+    if (artifacts.length === 1) {
+      alert('Monolingual data is currently not supported');
+      return;
+    }
+
+    const { select } = createAnalyticsElement(analyticsContainer);
+    const analyticsPerLocale = select('.analyticsPerLocale');
+    const analyticsLineCount = /** @type {HTMLSpanElement} */ (
+      select('.analyticsLines span')
+    );
+
+    const { lineTuples, artifactAFileName, artifactBFileName } =
+      await getLineTuples(status, artifacts[0], artifacts[1]);
+
+    let lineLength = 0;
+    analyticsLineCount.innerText = '0';
+    const cancelUpdateLoop = runLoop(() => {
+      analyticsLineCount.innerText = `${lineLength}`;
+    });
+
+    /** @type {Map<string, number>} */
+    const codePointsA = new Map();
+    /** @type {Map<string, number>} */
+    const codePointsB = new Map();
+
+    /** @type {Array<[string, string]>} */
+    for await (const [lineA, lineB] of lineTuples) {
+      for (let i = 0; i < lineA.length; i++) {
+        let countA = codePointsA.get(lineA[i]);
+        if (countA === undefined) {
+          countA = 0;
+        }
+        codePointsA.set(lineA[i], countA + 1);
+      }
+      for (let i = 0; i < lineB.length; i++) {
+        let countB = codePointsB.get(lineB[i]);
+        if (countB === undefined) {
+          countB = 0;
+        }
+        codePointsB.set(lineB[i], countB + 1);
+      }
+      lineLength++;
+    }
+
+    /** @type {Array<[Map<string, number>, string]>} */
+    const data = [
+      [codePointsA, artifactAFileName],
+      [codePointsA, artifactBFileName],
+    ];
+
+    for (const [codePoints, name] of data) {
+      const sortedCodePoints = [...codePoints.entries()].sort(
+        (a, b) => b[1] - a[1],
+      );
+      const [table, selectFromTable] = html`
+        <div className="analyticsCodePoints">
+          <h2></h2>
+          <table>
+            <thead>
+              <tr>
+                <th>Character</th>
+                <th>Codepoint</th>
+                <th>Frequency</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      `;
+      const tbody = selectFromTable('tbody');
+      const h2 = /** @type {HTMLElement} */ (selectFromTable('h2'));
+      h2.innerText = name;
+
+      for (const [ch, count] of sortedCodePoints) {
+        const codepoint = ch.codePointAt(0);
+
+        const row = document.createElement('tr');
+
+        const chTD = document.createElement('td');
+        const codepointTD = document.createElement('td');
+        const countTD = document.createElement('td');
+
+        row.appendChild(chTD);
+        row.appendChild(codepointTD);
+        row.appendChild(countTD);
+
+        chTD.innerText = `"${ch}"`;
+        codepointTD.innerText =
+          'U+' + (codepoint ?? 0).toString(16).padStart(4, '0');
+        countTD.innerText = String(count);
+
+        tbody.appendChild(row);
+      }
+      analyticsPerLocale.appendChild(table);
+    }
+
+    cancelUpdateLoop();
   };
 }
 
