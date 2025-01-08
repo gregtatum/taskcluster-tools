@@ -253,13 +253,15 @@ interface ArtifactListing {
   taskId: string,
   totalSize: number,
   totalMonthBytes: number, // How many bytes are stored in a month
-  artifacts: Array<{
-    runId: number,
-    path: string,
-    // The size in bytes.
-    size: number | null,
-    monthBytes: number | null
-  }>
+  artifacts: Array<Artifact>
+}
+
+interface Artifact {
+  runId: number,
+  path: string,
+  // The size in bytes.
+  size: number | null,
+  monthBytes: number | null
 }
 
 /**

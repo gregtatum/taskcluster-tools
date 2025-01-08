@@ -672,6 +672,18 @@ export async function listArtifacts(server, taskId, runId) {
 }
 
 /**
+ * Fetch an artifact response object.
+ *
+ * @param {string} server
+ * @param {string} taskId
+ * @param {string} artifactPath
+ * @returns {string}
+ */
+export function getArtifactURL(server, taskId, artifactPath) {
+  return `${server}/api/queue/v1/task/${taskId}/artifacts/${artifactPath}`;
+}
+
+/**
  * Fetch an artifact, and optionally cache the results.
  *
  * @param {string} server
@@ -688,7 +700,7 @@ export async function fetchArtifact(
   returnType,
   cache,
 ) {
-  const taskUrl = `${server}/api/queue/v1/task/${taskId}/artifacts/${artifactPath}`;
+  const taskUrl = getArtifactURL(server, taskId, artifactPath);
   console.log('Fetching', taskUrl);
   const cacheKey = `cache-artifact-${taskUrl}`;
   if (cache) {

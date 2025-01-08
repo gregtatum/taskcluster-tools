@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Data Analysis Tool</title>
+  <link rel="stylesheet" href="./data.css">
+</head>
+<body>
+  <h1>Data Analysis Tool</h1>
+  <div>
+    <label for="taskGroup">Comma separated Task Group IDs</label>
+    <input type="text" id="taskGroup">
+  </div>
+  <div id='error'>There was an error, see the console for more details.</div>
+  <table id="table">
+    <thead>
+      <tr>
+        <th>Dataset</th>
+        <th>Size</th>
+        <th>Analyze</th>
+      </tr>
+    </thead>
+    <tbody id="tbody">
+    </tbody>
+  </table>
+  <script src="../../assets/d3.v7.min.js"></script>
+  <script src="../../assets/fzstd.v0.1.1.min.js"></script>
+  <script type="module" src="./data.mjs"></script>
+</body>
+</html>

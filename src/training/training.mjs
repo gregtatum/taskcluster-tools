@@ -583,13 +583,13 @@ async function buildTableRow(
   // Attempt to find a langpair
   const langPair = await getLangPair(db, trainActionTask);
 
+  const langPairKey = `${experimentName}-${langPair}`;
   {
     // Keep track of this list.
-    const key = `${experimentName}-${langPair}`;
-    let list = taskGroupsByLangPair.get(key);
+    let list = taskGroupsByLangPair.get(langPairKey);
     if (!list) {
       list = [];
-      taskGroupsByLangPair.set(key, list);
+      taskGroupsByLangPair.set(langPairKey, list);
     }
     list.push(tasks);
   }
@@ -613,9 +613,17 @@ async function buildTableRow(
     hiddenDate.className = 'hiddenDate';
     hiddenDate.innerText = tasks[0].task.created;
 
+    const data = document.createElement('button');
+    data.innerHTML = 'data';
+    data.addEventListener(
+      'click',
+      dataButtonHandler(langPairKey, taskGroupsByLangPair),
+    );
+
     td.appendChild(hiddenDate);
     td.appendChild(document.createTextNode(' '));
     td.appendChild(button);
+    td.appendChild(data);
   }
 
   // The "[a-z]{2,3}-[a-z]{2,3}" part of the regexes below all match the language
@@ -1172,4 +1180,29 @@ function getTaskGroupNames() {
     console.error('Could not parse taskGroupNames', taskGroupNamesString);
   }
   return {};
+}
+
+/**
+ * @param {string} langPairKey
+ * @param {Map<string, Array<TaskAndStatus[]>>} taskGroupsByLangPair
+ */
+function dataButtonHandler(langPairKey, taskGroupsByLangPair) {
+  return () => {
+    const taskGroups = taskGroupsByLangPair.get(langPairKey);
+    if (!taskGroups) {
+      alert('Could not find the task groups, this is a bug.');
+      return;
+    }
+    let taskGroupIds = [];
+    for (const taskAndStatuses of taskGroups) {
+      const [taskAndStatus] = taskAndStatuses;
+      if (!taskAndStatus) {
+        continue;
+      }
+      taskGroupIds.push(taskAndStatus.task.taskGroupId);
+    }
+    const urlParams = new URLSearchParams();
+    urlParams.set('taskGroupIds', taskGroupIds.join(','));
+    window.location.href = '../data/?' + urlParams.toString();
+  };
 }

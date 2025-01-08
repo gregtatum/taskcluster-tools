@@ -1,0 +1,86 @@
+:root {
+  font-family: sans-serif;
+}
+
+label {
+  display: block;
+}
+input[type=text] {
+  width: 100%;
+  max-width: 1000px;
+  padding: 10px;
+  box-sizing: border-box;
+}
+
+#error {
+  border-radius: 3px;
+  margin: 5px;
+  background: rgb(185, 0, 0);
+  color: #fff;
+  padding: 5px;
+  display: none;
+}
+
+table {
+  border-collapse: collapse;
+  border-style: hidden;
+  margin-bottom: 1rem;
+  margin-top: 1rem;
+  border-radius: 9px;
+  overflow: hidden;
+  box-shadow: 0 0 0 1px #666;
+  min-width: 800px;
+  width: 100%;
+}
+
+tbody {
+  font-family: monospace;
+}
+
+th {
+  background-color: #aaa;
+}
+
+td, th {
+  border: 0.9px solid #c6c6c6;
+  padding: 0.45rem 0.85rem;
+  text-wrap: nowrap;
+  vertical-align:top
+}
+
+.sample {
+  max-height: 50vh;
+  overflow-y: auto;
+}
+
+.sampleHeader {
+  background: #ddd;
+  font-weight: bold;
+}
+
+.sampleRow {
+  display: flex;
+  width: calc(-45px + 100vw);
+  gap: 28px;
+  padding: 4px 0;
+  border-bottom: 1px solid #ccc;
+
+  &:hover {
+    background-color: #ccf;
+  }
+
+  & > div {
+    width: 50%;
+    box-sizing: border-box;
+    text-wrap: auto;
+  }
+}
+
+.analyticsPerLocale {
+  display: flex;
+
+  & > * {
+    width: 50%;
+    text-align: center;
+  }
+}

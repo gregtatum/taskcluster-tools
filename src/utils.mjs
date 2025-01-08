@@ -253,3 +253,28 @@ export function changeLocation(urlParams) {
   // @ts-ignore
   window.location = newLocation;
 }
+
+/**
+ * @template T
+ * @param {AsyncIterable<T>} iteratorObjectA
+ * @param {AsyncIterable<T>} iteratorObjectB
+ * @returns {AsyncIterable<[T, T]>}
+ */
+export async function* combineAsyncIterators(iteratorObjectA, iteratorObjectB) {
+  const iteratorA = iteratorObjectA[Symbol.asyncIterator]();
+  const iteratorB = iteratorObjectB[Symbol.asyncIterator]();
+
+  while (true) {
+    const promiseA = iteratorA.next();
+    const promiseB = iteratorB.next();
+    const nextA = await promiseA;
+    const nextB = await promiseB;
+    if (nextA.done !== nextB.done) {
+      console.error(new Error('The iterators were not the same length'));
+    }
+    if (nextA.done || nextB.done) {
+      return;
+    }
+    yield [nextA.value, nextB.value];
+  }
+}
