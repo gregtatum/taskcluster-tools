@@ -34,6 +34,7 @@ asAny(window).profilerOrigin = 'https://profiler.firefox.com';
 const elements = {
   taskGroup: /** @type {HTMLInputElement} */ (getElement('taskGroup')),
   mergeChunks: /** @type {HTMLInputElement} */ (getElement('mergeChunks')),
+  hideToolchain: /** @type {HTMLInputElement} */ (getElement('hideToolchain')),
   fetchDependentTasks: /** @type {HTMLInputElement} */ (
     getElement('fetchDependentTasks')
   ),
@@ -61,11 +62,15 @@ async function loadTaskGraphJSON(taskGraph) {
 
   // /** @type {TaskGraph} */
   // const taskGraph = await response.json();
-  const tasks = taskGraphToTasks(
+  let tasks = taskGraphToTasks(
     taskGraph,
     getIsMergeChunks(),
     getMergeTaskTypes(),
   );
+
+  if (getIsHideToolchain()) {
+    tasks = tasks.filter(isNotToolchainTask);
+  }
 
   exposeAsGlobal('taskGraph', taskGraph);
   exposeAsGlobal('tasks', tasks);
@@ -92,7 +97,11 @@ async function init() {
   );
 
   if (result) {
-    const { mergedTasks, taskGroups } = result;
+    let { mergedTasks, taskGroups } = result;
+    if (getIsHideToolchain()) {
+      mergedTasks = mergedTasks.filter(isNotToolchainTask);
+    }
+
     exposeAsGlobal('taskGroups', taskGroups);
     render(mergedTasks, false /* isTaskGraphDefinition */);
     setupProfilerButton(taskGroups, new URL(server));
@@ -390,6 +399,13 @@ function setupHandlers() {
     changeLocation(urlParams);
   });
 
+  elements.hideToolchain.checked = getIsHideToolchain();
+  elements.hideToolchain.addEventListener('click', () => {
+    const urlParams = new URLSearchParams(window.location.search);
+    urlParams.set('hideToolchain', elements.hideToolchain.checked.toString());
+    changeLocation(urlParams);
+  });
+
   elements.fetchDependentTasks.checked = getFetchDependentTasks();
   elements.fetchDependentTasks.addEventListener('click', () => {
     const urlParams = new URLSearchParams(window.location.search);
@@ -529,6 +545,16 @@ function setupProfilerButton(taskGroups, taskClusterURL) {
 function getIsMergeChunks() {
   const urlParams = new URLSearchParams(window.location.search);
   return urlParams.get('mergeChunks') === 'true';
+}
+
+/**
+ * Should the toolchain and docker tasks be hidden?
+ *
+ * @returns {boolean}
+ */
+function getIsHideToolchain() {
+  const urlParams = new URLSearchParams(window.location.search);
+  return urlParams.get('hideToolchain') === 'true';
 }
 
 /**
@@ -1361,4 +1387,20 @@ function mergeOverlappingTimeRanges(timeRangesOrNull) {
   }
 
   return result;
+}
+
+/**
+ * @param {TaskAndStatus} taskAndStatus
+ * @returns {boolean}
+ */
+function isNotToolchainTask({ task }) {
+  const { label } = task.tags;
+  if (!label) {
+    return true;
+  }
+  return !(
+    label.startsWith('toolchain-') ||
+    label.startsWith('fetch-') ||
+    label.startsWith('docker-')
+  );
 }
