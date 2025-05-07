@@ -24,6 +24,7 @@ const elements = {
   taskId: /** @type {HTMLInputElement} */ (getElement('taskId')),
   taskGroup: /** @type {HTMLInputElement} */ (getElement('taskGroup')),
   info: /** @type {HTMLDivElement} */ (getElement('info')),
+  dropZone: /** @type {HTMLElement} */ (getElement('dropZone')),
 };
 
 console.log('Override the profiler origin with window.profilerOrigin');
@@ -44,10 +45,13 @@ asAny(window).profilerOrigin = 'https://profiler.firefox.com';
  * @returns {LogRow[]} The parsed log rows.
  */
 function readLogFile(lines) {
+  '[task 2025-05-05T13:27:56.852+00:00] Using synchronous SGD';
+
   const logPattern =
-    /^\s*\[(?<component>\w+)(:(?<logLevel>\w+))?\s*(?<time>[\d\-T:.Z]+)\]\s*(?<message>.*)/;
+    /^\s*\[(?<component>\w+)(:(?<logLevel>\w+))?\s*(?<time>[\d\-T:.Z+]+)\]\s*(?<message>.*)/;
   // ^\s*                                                                                     Skip any beginning whitespace.
   //     \[                                                            \]                     "[taskcluster:warn 2024-05-20T14:40:11.353Z]"
+  //                                                                                           [task             2025-05-05T13:27:56.852+00:00]
   //       (?<component>\w+)                                                                  Capture the component name, here "taskcluster"
   //                        (:(?<logLevel>\w+))?                                              An optional log level, like "warn"
   //                                            \s*                                           Ignore whitespace
@@ -86,7 +90,7 @@ function readLogFile(lines) {
       });
     } else {
       logRows.push({
-        component: 'no timestamp',
+        component: 'none',
         time,
         message: line,
       });
@@ -262,8 +266,8 @@ function getTaskSchema() {
  * Builds a profile from the provided log rows.
  *
  * @param {LogRow[]} logRows - The log rows to process.
- * @param {Task} task
- * @param {string} taskId
+ * @param {Task} [task]
+ * @param {string} [taskId]
  * @returns {import('profiler.mjs').Profile} The generated profile.
  */
 function buildProfileFromLogRows(logRows, task, taskId) {
@@ -271,9 +275,13 @@ function buildProfileFromLogRows(logRows, task, taskId) {
   profile.meta.markerSchema = [getLiveLogRowSchema(), getTaskSchema()];
   profile.meta.categories = getCategories();
 
-  const date = new Date(task.created).toLocaleDateString();
+  const date = new Date(task?.created ?? Date.now()).toLocaleDateString();
 
-  profile.meta.product = `${task.metadata.name} ${taskId} - ${date}`;
+  if (task && taskId) {
+    profile.meta.product = `${task.metadata.name} ${taskId} - ${date}`;
+  } else {
+    profile.meta.product = `Taskcluster - ${date}`;
+  }
 
   // Compute and save the profile start time.
   let profileStartTime = Infinity;
@@ -302,6 +310,7 @@ function buildProfileFromLogRows(logRows, task, taskId) {
   });
 
   const stringArray = new UniqueStringArray();
+  const taskName = task?.metadata.name || 'Task';
 
   {
     // Add the task.
@@ -311,16 +320,24 @@ function buildProfileFromLogRows(logRows, task, taskId) {
     markers.phase.push(durationMarker);
 
     markers.category.push(categoryIndexDict['Task'] ?? 0);
-    markers.name.push(stringArray.indexForString(task.metadata.name));
+    markers.name.push(stringArray.indexForString(taskName));
 
-    markers.data.push({
-      type: 'Task',
-      name: 'Task',
-      taskName: task.metadata.name,
-      taskGroupURL: `${getServer()}/tasks/groups/${task.taskGroupId}`,
-      taskURL: `${getServer()}/tasks/${taskId}`,
-      taskGroupProfile: `https://gregtatum.github.io/taskcluster-tools/src/taskprofiler/?taskGroupId=${task.taskGroupId}`,
-    });
+    if (task && taskId) {
+      markers.data.push({
+        type: 'Task',
+        name: 'Task',
+        taskName,
+        taskGroupURL: `${getServer()}/tasks/groups/${task.taskGroupId}`,
+        taskURL: `${getServer()}/tasks/${taskId}`,
+        taskGroupProfile: `https://gregtatum.github.io/taskcluster-tools/src/taskprofiler/?taskGroupId=${task.taskGroupId}`,
+      });
+    } else {
+      markers.data.push({
+        type: 'Task',
+        name: 'Task',
+        taskName,
+      });
+    }
     markers.length += 1;
   }
 
@@ -375,6 +392,7 @@ async function fetchLogsAndBuildProfile(taskId, task) {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
+  addDropHandlers();
   {
     const urlParams = new URLSearchParams(window.location.search);
     const taskId = urlParams.get('taskId');
@@ -543,4 +561,47 @@ async function getProfileFromTaskGroup(taskGroupId) {
     console.error(error);
     updateStatusMessage('There was an error, see the console for more details');
   }
+}
+
+function addDropHandlers() {
+  elements.dropZone.addEventListener('dragover', (event) => {
+    event.preventDefault();
+    elements.dropZone.style.backgroundColor = '#ccf';
+  });
+
+  elements.dropZone.addEventListener('dragleave', () => {
+    elements.dropZone.style.backgroundColor = '';
+  });
+
+  elements.dropZone.addEventListener('drop', async (event) => {
+    event.preventDefault();
+    elements.dropZone.style.backgroundColor = '';
+    const { dataTransfer } = event;
+    if (!dataTransfer) {
+      return;
+    }
+    const file = dataTransfer.files[0];
+    if (file) {
+      try {
+        const logText = await file.text();
+        const logLines = logText.split('\n');
+        console.log('Log text', { logText });
+
+        const logRows = readLogFile(logLines);
+        fixupLogRows(logRows);
+
+        console.log('Log rows', { logRows });
+        const profile = buildProfileFromLogRows(logRows);
+        console.log('Profile', profile);
+
+        await injectProfile(profile);
+        updateStatusMessage(`Profile for log was opened`);
+      } catch (error) {
+        console.error(error);
+        updateStatusMessage('Could not extract profile from the provided log');
+      }
+    } else {
+      updateStatusMessage('No valid file dropped');
+    }
+  });
 }
