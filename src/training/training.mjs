@@ -631,15 +631,18 @@ async function buildTableRow(
 
   /** @type {Array<{ name: string, evalMatch: RegExp, trainMatch: RegExp | null}>} */
   const evals = [
+    // Patterns before the rename:
     {
       name: 'teacher1',
       evalMatch: /^evaluate-teacher-flores-devtest-[a-z]{2,3}-[a-z]{2,3}-1$/,
-      trainMatch: /^train-teacher-[a-z]{2,3}-[a-z]{2,3}-1$/,
+      // Old name: train-teacher-en-hu-1
+      // New name: train-teacher-model-en-hu-1
+      trainMatch: /^train-teacher-(model-)?[a-z]{2,3}-[a-z]{2,3}-1$/,
     },
     {
       name: 'teacher2',
       evalMatch: /^evaluate-teacher-flores-devtest-[a-z]{2,3}-[a-z]{2,3}-2/,
-      trainMatch: /^train-teacher-[a-z]{2,3}-[a-z]{2,3}-2$/,
+      trainMatch: /^train-teacher-(model-)?[a-z]{2,3}-[a-z]{2,3}-2$/,
     },
     {
       name: 'teacherensemble',
@@ -648,20 +651,29 @@ async function buildTableRow(
       trainMatch: null,
     },
     {
+      // Old name: train-student-en-hu
+      // New name: distillation-student-model-train-en-hu
       name: 'student',
       evalMatch: /^evaluate-student-flores-devtest-[a-z]{2,3}-[a-z]{2,3}$/,
-      trainMatch: /^train-student-[a-z]{2,3}-[a-z]{2,3}$/,
+      trainMatch:
+        /^(distillation-student-model-train|train-student)-[a-z]{2,3}-[a-z]{2,3}$/,
     },
     {
+      // Old name: finetune-student-en-hu
+      // New name: distillation-student-model-finetune-en-hu
       name: 'finetunedstudent',
       evalMatch:
         /^evaluate-finetuned-student-flores-devtest-[a-z]{2,3}-[a-z]{2,3}$/,
-      trainMatch: /^finetune-student-[a-z]{2,3}-[a-z]{2,3}$/,
+      trainMatch:
+        /^(distillation-student-model-finetune|finetune-student)-[a-z]{2,3}-[a-z]{2,3}$/,
     },
     {
+      // Old name: quantize-en-hu
+      // New name: distillation-student-model-quantize-en-hu
       name: 'studentquantized',
       evalMatch: /^evaluate-quantized-flores-devtest-[a-z]{2,3}-[a-z]{2,3}$/,
-      trainMatch: /^quantize-[a-z]{2,3}-[a-z]{2,3}$/,
+      trainMatch:
+        /^(distillation-student-model-quantize|quantize)-[a-z]{2,3}-[a-z]{2,3}$/,
     },
   ];
 
@@ -743,24 +755,73 @@ async function buildTableRow(
    */
   const orderedSteps = [
     'Action: Cancel All',
-    'dataset-',
-    'translate-mono-',
-    'clean-corpus-',
-    'bicleaner-ai-',
-    'train-backwards-',
-    'evaluate-backwards-',
-    'alignments-backtranslated-',
-    'train-teacher-',
-    'evaluate-teacher-',
-    'alignments-student-',
-    'translate-corpus-',
-    'train-student-',
-    'evaluate-student-',
-    'finetune-student-',
-    'evaluate-finetune-student-',
-    'quantize-',
-    'evaluate-quantized-',
-    'export-',
+    'docker',
+    'toolchain',
+    'fetch',
+    'continuation',
+
+    // ---------------------------
+    // Download and clean datasets
+    'dataset',
+    // datasets parallel
+    'corpus-clean-parallel',
+    'corpus-clean-parallel-fetch-bicleaner-model',
+    'corpus-clean-parallel-bicleaner-ai',
+    'corpus-merge-parallel',
+    'corpus-analyze-parallel',
+    'corpus-align-parallel',
+    'build-vocab',
+    // mono and devset tasks are faster
+    'corpus-clean-mono',
+    'corpus-merge-mono',
+    'corpus-analyze-mono',
+    'corpus-merge-devset',
+
+    // ---------------------------
+    // Synthesize Backtranslations
+    'backtranslations-train-backwards-model',
+    'evaluate-backward',
+    'backtranslations-mono-trg-chunk',
+    'backtranslations-mono-trg-translate',
+    'backtranslations-mono-trg-dechunk',
+    'corpus-align-backtranslation',
+
+    // ---------------------------
+    // Train teacher
+    'train-teacher-model',
+    'evaluate-teacher',
+
+    // ----------------------------
+    // Synthesize Distillation Data
+
+    // Distill the parallel data
+    'distillation-parallel-src-chunk',
+    'distillation-parallel-src-translate',
+    'distillation-parallel-src-extract-best',
+    'distillation-parallel-src-dechunk-translation',
+
+    // Distill the monolingual data
+    'distillation-mono-src-chunk',
+    'distillation-mono-src-translate',
+    'distillation-mono-src-dechunk-translation',
+
+    // Build the final distillation corpus
+    'corpus-merge-distillation',
+    'distillation-parallel-src-translations-score',
+    'distillation-corpus-final-filtering',
+    'corpus-align-distillation',
+
+    // ----------------------------
+    // Synthesize Distillation Data
+    'distillation-corpus-build-shortlist',
+    'distillation-student-model-train',
+    'evaluate-student',
+    'distillation-student-model-finetune',
+    'evaluate-finetuned-student',
+    'distillation-student-model-quantize',
+    'evaluate-quantized',
+
+    'export',
   ];
 
   /** @type {Record<string, "not-started" | "running" | "completed">} */
@@ -850,11 +911,6 @@ async function buildTableRow(
       exception = step;
     }
   }
-  // Take off the last "-"
-  completed = completed.slice(0, completed.length - 1);
-  running = running.slice(0, running.length - 1);
-  failed = failed.slice(0, failed.length - 1);
-  exception = exception.slice(0, exception.length - 1);
 
   addStateCount('completed', undefined, completed);
   addStateCount('running', '#1976d2', running);
