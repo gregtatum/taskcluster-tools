@@ -662,40 +662,72 @@ function getCosts(taskGroups) {
 
   /** @type {TimeCostBreakdown[]} */
   const breakdownCosts = [
-    filterTasks('train backwards', ({ task }) =>
-      task.metadata.name.startsWith('train-backwards'),
+    filterTasks(
+      'train backwards',
+      ({ task }) =>
+        // Old name
+        task.metadata.name.startsWith('train-backwards') ||
+        // New name
+        task.metadata.name.startsWith('backtranslations-train-backwards-model'),
     ),
 
-    filterTasks('train teacher', ({ task }) =>
-      task.metadata.name.startsWith('train-teacher'),
+    filterTasks(
+      'train teacher',
+      ({ task }) =>
+        // Old name
+        task.metadata.name.startsWith('train-teacher') ||
+        // New name
+        task.metadata.name.startsWith('train-teacher-model'),
     ),
 
     filterTasks(
       'train student',
       ({ task }) =>
+        // Old names:
         task.metadata.name.startsWith('train-student-') ||
-        task.metadata.name.startsWith('finetune-student'),
+        task.metadata.name.startsWith('finetune-student') ||
+        // New names:
+        task.metadata.name.startsWith('distillation-student-model-'),
     ),
 
     filterTasks(
-      'synthesize backtranslation data (translate-mono-trg)',
-      ({ task }) => task.metadata.name.startsWith('translate-mono-trg'),
+      'synthesize backtranslations',
+      ({ task }) =>
+        // Old names:
+        task.metadata.name.startsWith('translate-mono-trg') ||
+        // New name:
+        task.metadata.name.startsWith('backtranslations-mono-trg-translate'),
     ),
 
-    filterTasks('synthesize student data (translate-mono-src)', ({ task }) =>
-      task.metadata.name.startsWith('translate-mono-src'),
+    filterTasks(
+      'synthesize distillation data (mono)',
+      ({ task }) =>
+        // Old name
+        task.metadata.name.startsWith('translate-mono-src') ||
+        // New name
+        task.metadata.name.startsWith('distillation-mono-src-translate'),
     ),
 
-    filterTasks('synthesize student data (translate-corpus)', ({ task }) =>
-      task.metadata.name.startsWith('translate-corpus'),
+    filterTasks(
+      'synthesize distillation data (parallel)',
+      ({ task }) =>
+        // Old name
+        task.metadata.name.startsWith('translate-corpus') ||
+        // New name
+        task.metadata.name.startsWith('distillation-parallel-src-translate'),
     ),
 
-    filterTasks('compute alignments', ({ task }) =>
-      task.metadata.name.startsWith('alignments-'),
+    filterTasks(
+      'compute alignments',
+      ({ task }) =>
+        // Old name
+        task.metadata.name.startsWith('alignments-') ||
+        // New name
+        task.metadata.name.startsWith('corpus-align-'),
     ),
 
     filterTasks('bicleaner ai', ({ task }) =>
-      task.metadata.name.startsWith('bicleaner-ai-'),
+      task.metadata.name.includes('bicleaner-ai-'),
     ),
 
     filterTasks('evaluations', ({ task }) =>
@@ -739,7 +771,10 @@ function getCosts(taskGroups) {
     breakdownCosts.push(otherCosts);
   }
 
-  return { allCosts, breakdownCosts };
+  return {
+    allCosts,
+    breakdownCosts: breakdownCosts.filter((costs) => costs.cost !== 0),
+  };
 }
 
 /**
