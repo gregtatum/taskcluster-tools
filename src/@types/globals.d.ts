@@ -37,6 +37,7 @@ declare interface Task {
   expires: string; // "2023-10-17T18:58:07.341Z";
   scopes: string[]; // ["generic-worker:cache:translations-level-3-checkouts"]
   payload: {
+    env: Record<string, string>,
     // This was all the same for translations.
     artifacts: [
       {

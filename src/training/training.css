@@ -55,7 +55,7 @@ td, th {
 }
 
 /* Model name */
-td:nth-child(2) {
+td:nth-child(3) {
   background-color: #eee;
   font-family: monospace;
   border-right: 2px solid #bebebe;
@@ -66,15 +66,15 @@ td:nth-child(2) {
 }
 
 /* What is running */
-td:nth-child(9) {
+td:nth-child(10) {
   border-left: 2px solid #bebebe;
 }
-td:nth-child(9),
 td:nth-child(10),
 td:nth-child(11),
 td:nth-child(12),
 td:nth-child(13),
-td:nth-child(14) {
+td:nth-child(14),
+td:nth-child(15) {
   background: #eee;
   tr:hover & {
     background-color: #ddd;
@@ -84,11 +84,21 @@ td:nth-child(14) {
 
 #controls {
   margin: 1em;
-  max-height: 200px;
+  height: 140px;
   overflow: scroll;
   border-radius: 9px;
   outline: 1px solid #666;
+  resize: vertical;
+  max-height: fit-content;
+  position: relative;
 
+  &::after {
+    content: "";
+    inset: 0;
+    position: absolute;
+    pointer-events: none;
+    background: linear-gradient(to top,#0003 0, #0000 13px);
+  }
   & input[type=text] {
     width: 200px;
   }
@@ -113,17 +123,18 @@ td:nth-child(14) {
   & .showHideButton {
     margin-inline-start: 6px;
   }
-  & .renameTaskGroup {
-    background: url("../../assets/edit.svg") 50% 50%;
-    width: 16px;
-    height: 16px;
-    border: 0;
-    box-sizing: border-box;
-    margin: 0 !important;
-    position: relative;
-    left: -5px;
-    cursor: pointer;
-  }
+}
+
+.copyButton {
+  background: url("../../assets/copy.svg") 50% 50%;
+  width: 16px;
+  height: 16px;
+  border: 0;
+  box-sizing: border-box;
+  margin: 0 !important;
+  position: relative;
+  left: -5px;
+  cursor: pointer;
 }
 
 .hiddenDate {

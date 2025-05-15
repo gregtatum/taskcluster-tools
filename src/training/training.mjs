@@ -530,7 +530,6 @@ async function buildTableRow(
   const experimentName = await getExperimentName(db, trainActionTask);
   const tasks = taskGroup.tasks;
   const taskGroupUrl = `${server}/tasks/groups/${taskGroupId}`;
-  const taskGroupNames = getTaskGroupNames();
 
   {
     // Build the task group ID link
@@ -538,30 +537,19 @@ async function buildTableRow(
     div.className = 'taskGroupCell';
 
     const taskGroupLink = document.createElement('a');
-    const input = document.createElement('input');
-    const editButton = document.createElement('button');
     const showHideButton = document.createElement('button');
 
-    input.addEventListener(
-      'keydown',
-      renameTaskGroupHandler(taskGroupId, input, taskGroupLink),
-    );
-    input.style.display = 'none';
-    input.value = taskGroupNames[taskGroupId] ?? '';
-
-    editButton.className = 'renameTaskGroup';
-    editButton.addEventListener('click', () => {
-      if (taskGroupLink.style.display === 'none') {
-        taskGroupLink.style.display = 'block';
-        input.style.display = 'none';
-      } else {
-        taskGroupLink.style.display = 'none';
-        input.style.display = 'block';
-        input.focus();
-      }
+    const copyButton = document.createElement('button');
+    copyButton.title = 'Copy the TaskGroup ID';
+    copyButton.className = 'copyButton';
+    copyButton.addEventListener('click', () => {
+      navigator.clipboard.writeText(taskGroupId).catch((err) => {
+        console.error(err);
+        alert('Failed to copy taskGroupId');
+      });
     });
 
-    taskGroupLink.innerText = taskGroupNames[taskGroupId] ?? taskGroupId;
+    taskGroupLink.innerText = taskGroupId;
     taskGroupLink.href = taskGroupUrl;
     taskGroupLink.target = '_blank';
 
@@ -572,10 +560,37 @@ async function buildTableRow(
       toggleHiddenHandler(taskGroupId, isHidden),
     );
 
-    div.appendChild(editButton);
-    div.appendChild(input);
+    div.appendChild(copyButton);
     div.appendChild(taskGroupLink);
     div.appendChild(showHideButton);
+
+    createTD(div);
+  }
+
+  {
+    const div = document.createElement('div');
+    div.className = 'taskGroupCell';
+
+    const { env } = trainActionTask.task.payload;
+    const a = document.createElement('a');
+    const ref = env['TRANSLATIONS_BASE_REF'];
+    const hash = env['TRANSLATIONS_BASE_REV'];
+    a.innerText = env['TRANSLATIONS_BASE_REF'];
+    a.href = `https://github.com/mozilla/translations/commits/${ref}`;
+
+    const copyButton = document.createElement('button');
+    copyButton.title = `Copy the revision hash ${hash}`;
+    copyButton.className = 'copyButton';
+    copyButton.addEventListener('click', () => {
+      navigator.clipboard.writeText(hash).catch((err) => {
+        console.error(err);
+        alert('Failed to copy hash');
+      });
+    });
+
+    div.appendChild(copyButton);
+    div.appendChild(new Text(' '));
+    div.appendChild(a);
 
     createTD(div);
   }
@@ -613,17 +628,10 @@ async function buildTableRow(
     hiddenDate.className = 'hiddenDate';
     hiddenDate.innerText = tasks[0].task.created;
 
-    const data = document.createElement('button');
-    data.innerHTML = 'data';
-    data.addEventListener(
-      'click',
-      dataButtonHandler(langPairKey, taskGroupsByLangPair),
-    );
-
     td.appendChild(hiddenDate);
     td.appendChild(document.createTextNode(' '));
     td.appendChild(button);
-    td.appendChild(data);
+    td.appendChild(new Text(' '));
   }
 
   // The "[a-z]{2,3}-[a-z]{2,3}" part of the regexes below all match the language
@@ -1099,7 +1107,7 @@ function scheduleTableRowSort() {
   if (!isScheduled) {
     isScheduled = true;
     requestAnimationFrame(() => {
-      sortTable(elements.table, /* Lang pair column index */ 1);
+      sortTable(elements.table, /* Lang pair column index */ 2);
       isScheduled = false;
     });
   }
@@ -1162,103 +1170,4 @@ function sortTable(table, columnIndex, dir = 'asc') {
 function getShowAll() {
   const urlParams = new URLSearchParams(window.location.search);
   return urlParams.get('showAll') === 'true';
-}
-
-/**
- * @param {string} taskGroupId
- * @param {HTMLInputElement} input
- * @param {HTMLElement} taskGroupLink
- */
-function renameTaskGroupHandler(taskGroupId, input, taskGroupLink) {
-  /**
-   * @param {KeyboardEvent} event
-   */
-  return (event) => {
-    if (event.key === 'Escape') {
-      input.style.display = 'none';
-      taskGroupLink.style.display = 'block';
-    }
-    if (event.key !== 'Enter') {
-      return;
-    }
-    event.preventDefault();
-
-    const taskGroupNames = getTaskGroupNames();
-    if (input.value) {
-      taskGroupNames[taskGroupId] = input.value;
-      taskGroupLink.innerText = input.value;
-    } else {
-      delete taskGroupNames[taskGroupId];
-      taskGroupLink.innerText = taskGroupId;
-    }
-
-    saveTaskGroupNames(taskGroupNames);
-
-    input.style.display = 'none';
-    taskGroupLink.style.display = 'block';
-  };
-}
-
-/**
- * @param {Record<string, string>} taskGroupNames
- */
-function saveTaskGroupNames(taskGroupNames) {
-  const urlParams = new URLSearchParams(window.location.search);
-  urlParams.set('taskGroupNames2', JSON.stringify(taskGroupNames));
-  replaceLocation(urlParams);
-}
-
-/**
- * @returns {Record<string, string>}
- */
-function getTaskGroupNames() {
-  const urlParams = new URLSearchParams(window.location.search);
-  const taskGroupNamesString = urlParams.get('taskGroupNames2');
-  if (!taskGroupNamesString) {
-    return {};
-  }
-  try {
-    const record = JSON.parse(taskGroupNamesString);
-    if (!record || typeof record !== 'object') {
-      return {};
-    }
-    /** @type {Record<string, string>} */
-    const validatedRecord = {};
-    for (const [key, value] of Object.entries(record)) {
-      if (typeof key === 'string' && typeof value === 'string') {
-        validatedRecord[key] = value;
-      } else {
-        console.error('Invalid entry in the taskGroupNames:', { key, value });
-      }
-    }
-    return validatedRecord;
-  } catch (error) {
-    console.error('Could not parse taskGroupNames', taskGroupNamesString);
-  }
-  return {};
-}
-
-/**
- * @param {string} langPairKey
- * @param {Map<string, Array<TaskAndStatus[]>>} taskGroupsByLangPair
- */
-function dataButtonHandler(langPairKey, taskGroupsByLangPair) {
-  return () => {
-    const taskGroups = taskGroupsByLangPair.get(langPairKey);
-    if (!taskGroups) {
-      alert('Could not find the task groups, this is a bug.');
-      return;
-    }
-    let taskGroupIds = [];
-    for (const taskAndStatuses of taskGroups) {
-      const [taskAndStatus] = taskAndStatuses;
-      if (!taskAndStatus) {
-        continue;
-      }
-      taskGroupIds.push(taskAndStatus.task.taskGroupId);
-    }
-    const urlParams = new URLSearchParams();
-    urlParams.set('taskGroupIds', taskGroupIds.join(','));
-    window.location.href = '../data/?' + urlParams.toString();
-  };
 }
