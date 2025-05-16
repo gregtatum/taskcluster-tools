@@ -728,7 +728,7 @@ async function buildTableRow(
       });
     }
 
-    td.setAttribute(`data-${name}`, `${experimentName}-${langPair}`);
+    td.setAttribute(`data-${name}`, langPair);
   }
 
   console.log(langPair, tasks);
@@ -926,6 +926,8 @@ async function buildTableRow(
   addStateCount('exception', '#ffa000', exception);
   addStateCount('pending');
   addStateCount('unscheduled');
+
+  updateScores();
 }
 
 /**
