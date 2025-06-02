@@ -675,7 +675,7 @@ async function buildTableRow(
       name: 'teacher2',
       evalMatch: [
         /^evaluate-teacher-flores-devtest-[a-z]{2,3}-[a-z]{2,3}-2/,
-        /^evaluate-teacher-.*-devtest-[a-z]{2,3}-[a-z]{2,3}-2/,
+        /^evaluate-teacher-.*-[a-z]{2,3}-[a-z]{2,3}-2/,
       ],
       trainMatch: /^train-teacher-(model-)?[a-z]{2,3}-[a-z]{2,3}-2$/,
     },
@@ -683,7 +683,7 @@ async function buildTableRow(
       name: 'teacherensemble',
       evalMatch: [
         /^evaluate-teacher-ensemble-flores-devtest-[a-z]{2,3}-[a-z]{2,3}$/,
-        /^evaluate-teacher-ensemble-.*-devtest-[a-z]{2,3}-[a-z]{2,3}$/,
+        /^evaluate-teacher-ensemble-.*-[a-z]{2,3}-[a-z]{2,3}$/,
       ],
       trainMatch: null,
     },
@@ -693,7 +693,7 @@ async function buildTableRow(
       name: 'student',
       evalMatch: [
         /^evaluate-student-flores-devtest-[a-z]{2,3}-[a-z]{2,3}$/,
-        /^evaluate-student-.*-devtest-[a-z]{2,3}-[a-z]{2,3}$/,
+        /^evaluate-student-.*-[a-z]{2,3}-[a-z]{2,3}$/,
       ],
       trainMatch:
         /^(distillation-student-model-train|train-student)-[a-z]{2,3}-[a-z]{2,3}$/,
@@ -704,7 +704,7 @@ async function buildTableRow(
       name: 'finetunedstudent',
       evalMatch: [
         /^evaluate-finetuned-student-flores-devtest-[a-z]{2,3}-[a-z]{2,3}$/,
-        /^evaluate-finetuned-student-.*-devtest-[a-z]{2,3}-[a-z]{2,3}$/,
+        /^evaluate-finetuned-student-.*-[a-z]{2,3}-[a-z]{2,3}$/,
       ],
       trainMatch:
         /^(distillation-student-model-finetune|finetune-student)-[a-z]{2,3}-[a-z]{2,3}$/,
@@ -715,7 +715,7 @@ async function buildTableRow(
       name: 'studentquantized',
       evalMatch: [
         /^evaluate-quantized-flores-devtest-[a-z]{2,3}-[a-z]{2,3}$/,
-        /^evaluate-quantized-.*-devtest-[a-z]{2,3}-[a-z]{2,3}$/,
+        /^evaluate-quantized-.*-[a-z]{2,3}-[a-z]{2,3}$/,
       ],
       trainMatch:
         /^(distillation-student-model-quantize|quantize)-[a-z]{2,3}-[a-z]{2,3}$/,
@@ -754,17 +754,29 @@ async function buildTableRow(
       // as the task may have failed or be outdated, but its score is still valid.
       td.innerText = '';
       const { taskId } = evalTask.status;
+
+      // Simplify the name for the regex.
+      // From: "evaluate-teacher-mtdata-Neulab-tedtalks_test-1-eng-nor-no-en-1"
+      //   To:                  "mtdata-Neulab-tedtalks_test-1-eng-nor-no-en-1"
+      const name = evalTask.task.metadata.name
+        .replace('evaluate-teacher-', '')
+        .replace('evaluate-teacher-ensemble-', '')
+        .replace('evaluate-student-', '')
+        .replace('evaluate-finetuned-student-', '')
+        .replace('evaluate-quantized-', '');
+
       // Find the dataset name from the task name.
-      const match = evalTask.task.metadata.name.match(
-        // From: "evaluate-teacher-mtdata-Neulab-tedtalks_test-1-eng-nor-no-en-1"
-        // Match:                         Neulab-tedtalks_test-1-eng-nor
-        /^evaluate-teacher-([a-zA-Z]+)-(.*)-[a-z]{2,3}-[a-z]{2,3}(-\d)?$/,
-        //                 ([a-zA-Z]+)                                    Provider, e.g. "mtdata", "flores"
-        //                             (.*)                               Datset, e.g. "Neulab-tedtalks_test-1", or "devtest"
-        //                                  [a-z]{2,3}                    Language tag
-        //                                             [a-z]{2,3}         Language tag
-        //                                                       (-\d)?   An optional number for ensembles.
+      const match = name.match(
+        // From: "mtdata-Neulab-tedtalks_test-1-eng-nor-no-en-1"
+        // Match:       "Neulab-tedtalks_test-1-eng-nor"
+        /^([a-zA-Z]+)-(.*)-[a-z]{2,3}-[a-z]{2,3}(-\d)?$/,
+        //([a-zA-Z]+)                                    Provider, e.g. "mtdata", "flores"
+        //            (.*)                               Datset, e.g. "Neulab-tedtalks_test-1", or "devtest"
+        //                 [a-z]{2,3}                    Language tag
+        //                            [a-z]{2,3}         Language tag
+        //                                      (-\d)?   An optional number for ensembles.
       );
+
       if (match) {
         // "flores", "mtdata"
         const provider = match[1];
