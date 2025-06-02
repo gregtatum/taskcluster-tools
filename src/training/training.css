@@ -154,3 +154,8 @@ td:nth-child(15) {
 tr:hover {
   background-color: #f3f3f3;
 }
+
+/* Hide "Teacher 2" and "Teacher Ensemble" since they aren't used now. */
+:is(th, td):is(:nth-child(5), :nth-child(6)) {
+  display: none;
+}

@@ -344,6 +344,8 @@ function buildTable(db) {
  * @prop {number | null} score
  * @prop {Date} created
  * @prop {string} taskId
+ * @prop {string | null} provider
+ * @prop {string | null} dataset
  */
 
 /**
@@ -390,7 +392,13 @@ function updateScores() {
     }
 
     // Update the COMET scores for a TD, or note that an eval score is still needed.
-    for (const { langPair, score, taskId } of latestScores.values()) {
+    for (const {
+      langPair,
+      score,
+      provider,
+      taskId,
+      dataset,
+    } of latestScores.values()) {
       for (const element of Array.from(
         document.querySelectorAll(`[data-${key}=${langPair}]`),
       )) {
@@ -407,7 +415,7 @@ function updateScores() {
           a.href = `https://firefox-ci-tc.services.mozilla.com/tasks/${taskId}`;
           td.appendChild(a);
         } else {
-          updateCometTD(td, langPair, score, taskId);
+          updateCometTD(td, langPair, score, provider, dataset, taskId);
         }
       }
     }
@@ -463,47 +471,60 @@ async function _getCometScores() {
  * @param {HTMLTableCellElement} td
  * @param {string} langPair
  * @param {number} score
+ * @param {string | null} provider
+ * @param {string | null} dataset
  * @param {string} taskId
  */
-async function updateCometTD(td, langPair, score, taskId) {
+async function updateCometTD(td, langPair, score, provider, dataset, taskId) {
   const cometResults = await getCometScores();
-  const googleScore = cometResults[langPair]?.['flores-test']?.['google'] ?? 0;
-  // const googleScore = getAverageGoogleCometScore(cometResults, langPair);
-  const percentage = 100 * (1 - googleScore / score);
-  const sign = percentage >= 0 ? '+' : '';
-  const percentageDisplay = `${sign}${percentage.toFixed(2)}%`;
   while (td.lastChild) {
     td.removeChild(td.lastChild);
   }
 
-  let shippable = 'Shippable';
-  td.style.color = '#fff';
-  td.style.background = '#388e3c';
-  if (percentage < -5) {
-    // Does not meet release criteria.
-    td.style.background = '#f44336';
-    shippable = 'Not shippable';
+  let percentageDisplay;
+  const googleScore = cometResults[langPair]?.['flores-test']?.['google'];
+  // const googleScore = getAverageGoogleCometScore(cometResults, langPair);
+  const percentage = 100 * (1 - googleScore / score);
+  const sign = percentage >= 0 ? '+' : '';
+  if (provider === 'flores') {
+    percentageDisplay = `${sign}${percentage.toFixed(2)}%`;
+
+    let shippable = 'Shippable';
+    td.style.color = '#fff';
+    td.style.background = '#388e3c';
+    if (percentage < -5) {
+      // Does not meet release criteria.
+      td.style.background = '#f44336';
+      shippable = 'Not shippable';
+    }
+
+    td.title =
+      `${shippable} - COMET ${score} ` +
+      `vs Google Comet ${googleScore.toFixed(4)} ` +
+      `(${percentageDisplay})`;
+  } else if (provider && dataset) {
+    td.title = `flores is not available, showing: ${provider}-${dataset}`;
   }
 
   {
     const a = document.createElement('a');
     a.href = `https://firefox-ci-tc.services.mozilla.com/tasks/${taskId}`;
     a.innerText = `${(score * 100).toFixed(2)}`;
-    a.style.color = '#fff';
+    if (percentageDisplay) {
+      a.style.color = '#fff';
+    } else {
+      a.style.color = '#000';
+    }
     a.target = '_blank';
     td.appendChild(a);
   }
-  {
+
+  if (percentageDisplay) {
     const span = document.createElement('span');
     span.innerText = percentageDisplay;
     span.style.color = '#000';
     td.appendChild(span);
   }
-
-  td.title =
-    `${shippable} - COMET ${score} ` +
-    `vs Google Comet ${googleScore.toFixed(4)} ` +
-    `(${percentageDisplay})`;
 }
 
 /**
@@ -637,32 +658,43 @@ async function buildTableRow(
   // The "[a-z]{2,3}-[a-z]{2,3}" part of the regexes below all match the language
   // pair, so for instance "en-ca". It supports langtags of length 2-3.
 
-  /** @type {Array<{ name: string, evalMatch: RegExp, trainMatch: RegExp | null}>} */
+  /** @type {Array<{ name: string, evalMatch: RegExp[], trainMatch: RegExp | null}>} */
   const evals = [
     // Patterns before the rename:
     {
       name: 'teacher1',
-      evalMatch: /^evaluate-teacher-flores-devtest-[a-z]{2,3}-[a-z]{2,3}-1$/,
+      evalMatch: [
+        /^evaluate-teacher-flores-devtest-[a-z]{2,3}-[a-z]{2,3}-1$/,
+        /^evaluate-teacher-.*-[a-z]{2,3}-[a-z]{2,3}-1$/,
+      ],
       // Old name: train-teacher-en-hu-1
       // New name: train-teacher-model-en-hu-1
       trainMatch: /^train-teacher-(model-)?[a-z]{2,3}-[a-z]{2,3}-1$/,
     },
     {
       name: 'teacher2',
-      evalMatch: /^evaluate-teacher-flores-devtest-[a-z]{2,3}-[a-z]{2,3}-2/,
+      evalMatch: [
+        /^evaluate-teacher-flores-devtest-[a-z]{2,3}-[a-z]{2,3}-2/,
+        /^evaluate-teacher-.*-devtest-[a-z]{2,3}-[a-z]{2,3}-2/,
+      ],
       trainMatch: /^train-teacher-(model-)?[a-z]{2,3}-[a-z]{2,3}-2$/,
     },
     {
       name: 'teacherensemble',
-      evalMatch:
+      evalMatch: [
         /^evaluate-teacher-ensemble-flores-devtest-[a-z]{2,3}-[a-z]{2,3}$/,
+        /^evaluate-teacher-ensemble-.*-devtest-[a-z]{2,3}-[a-z]{2,3}$/,
+      ],
       trainMatch: null,
     },
     {
       // Old name: train-student-en-hu
       // New name: distillation-student-model-train-en-hu
       name: 'student',
-      evalMatch: /^evaluate-student-flores-devtest-[a-z]{2,3}-[a-z]{2,3}$/,
+      evalMatch: [
+        /^evaluate-student-flores-devtest-[a-z]{2,3}-[a-z]{2,3}$/,
+        /^evaluate-student-.*-devtest-[a-z]{2,3}-[a-z]{2,3}$/,
+      ],
       trainMatch:
         /^(distillation-student-model-train|train-student)-[a-z]{2,3}-[a-z]{2,3}$/,
     },
@@ -670,8 +702,10 @@ async function buildTableRow(
       // Old name: finetune-student-en-hu
       // New name: distillation-student-model-finetune-en-hu
       name: 'finetunedstudent',
-      evalMatch:
+      evalMatch: [
         /^evaluate-finetuned-student-flores-devtest-[a-z]{2,3}-[a-z]{2,3}$/,
+        /^evaluate-finetuned-student-.*-devtest-[a-z]{2,3}-[a-z]{2,3}$/,
+      ],
       trainMatch:
         /^(distillation-student-model-finetune|finetune-student)-[a-z]{2,3}-[a-z]{2,3}$/,
     },
@@ -679,7 +713,10 @@ async function buildTableRow(
       // Old name: quantize-en-hu
       // New name: distillation-student-model-quantize-en-hu
       name: 'studentquantized',
-      evalMatch: /^evaluate-quantized-flores-devtest-[a-z]{2,3}-[a-z]{2,3}$/,
+      evalMatch: [
+        /^evaluate-quantized-flores-devtest-[a-z]{2,3}-[a-z]{2,3}$/,
+        /^evaluate-quantized-.*-devtest-[a-z]{2,3}-[a-z]{2,3}$/,
+      ],
       trainMatch:
         /^(distillation-student-model-quantize|quantize)-[a-z]{2,3}-[a-z]{2,3}$/,
     },
@@ -687,10 +724,21 @@ async function buildTableRow(
 
   for (const { name, evalMatch, trainMatch } of evals) {
     const scoreList = scores[name];
-    const evalTask = tasks.find(
-      (t) =>
-        t.task.metadata.name.match(evalMatch) && t.status.state === 'completed',
-    );
+    /** @type {TaskAndStatus | undefined} */
+    let evalTask;
+    for (const regex of evalMatch) {
+      if (evalTask) {
+        break;
+      }
+      for (const task of tasks) {
+        if (task.task.metadata.name.match(regex)) {
+          if (task.status.state === 'completed') {
+            evalTask = task;
+          }
+          break;
+        }
+      }
+    }
     let trainTask;
     if (trainMatch) {
       trainTask = tasks.find(
@@ -706,25 +754,57 @@ async function buildTableRow(
       // as the task may have failed or be outdated, but its score is still valid.
       td.innerText = '';
       const { taskId } = evalTask.status;
-      db.getArtifactJSON(taskId, 'public/build/devtest.metrics.json').then(
-        (metrics) => {
-          const score = metrics?.comet?.score;
-          scoreList.push({
-            langPair,
-            score,
-            created: new Date(evalTask.task.created),
-            taskId,
-          });
-          updateCometTD(td, langPair, score, taskId);
-          updateScores();
-        },
+      // Find the dataset name from the task name.
+      const match = evalTask.task.metadata.name.match(
+        // From: "evaluate-teacher-mtdata-Neulab-tedtalks_test-1-eng-nor-no-en-1"
+        // Match:                         Neulab-tedtalks_test-1-eng-nor
+        /^evaluate-teacher-([a-zA-Z]+)-(.*)-[a-z]{2,3}-[a-z]{2,3}(-\d)?$/,
+        //                 ([a-zA-Z]+)                                    Provider, e.g. "mtdata", "flores"
+        //                             (.*)                               Datset, e.g. "Neulab-tedtalks_test-1", or "devtest"
+        //                                  [a-z]{2,3}                    Language tag
+        //                                             [a-z]{2,3}         Language tag
+        //                                                       (-\d)?   An optional number for ensembles.
       );
+      if (match) {
+        // "flores", "mtdata"
+        const provider = match[1];
+        // "devtest", "Neulab-tedtalks_test-1-eng-nor"
+        const dataset = match[2];
+        db.getArtifactJSON(taskId, `public/build/${dataset}.metrics.json`).then(
+          (metrics) => {
+            const score = metrics?.comet?.score;
+            if (score) {
+              scoreList.push({
+                langPair,
+                score,
+                created: new Date(evalTask.task.created),
+                taskId,
+                provider,
+                dataset,
+              });
+              updateCometTD(td, langPair, score, provider, dataset, taskId);
+              updateScores();
+            } else {
+              console.error('Could not find the COMET score', {
+                metrics,
+                evalTask,
+              });
+            }
+          },
+        );
+      } else {
+        console.error(
+          'Could not find the dataset name:',
+          evalTask.task.metadata.name,
+        );
+      }
     } else if (trainTask) {
       scoreList.push({
         langPair,
         score: null,
         created: new Date(trainTask.task.created),
         taskId: trainTask.status.taskId,
+        provider: null,
       });
     }
 
@@ -1017,10 +1097,15 @@ async function getLangPair(db, trainActionTask) {
   const text = await getConfigText(db, trainActionTask);
   const experimentText = text.split('\nexperiment:\n')[1] ?? '';
   const srcText = experimentText.split('  src:')[1] ?? '';
-  const src = srcText.split('\n')[0] ?? '';
+  let src = srcText.split('\n')[0] ?? '';
   const trgText = experimentText.split('  trg:')[1] ?? '';
-  const trg = trgText.split('\n')[0] ?? '';
-  return `${src.trim()}-${trg.trim()}`;
+  let trg = trgText.split('\n')[0] ?? '';
+
+  // Remove any quotes form the word.
+  src = src.trim().replaceAll("'", '').replaceAll('"', '');
+  trg = trg.trim().replaceAll("'", '').replaceAll('"', '');
+
+  return `${src}-${trg}`;
 }
 
 /**
