@@ -14,19 +14,11 @@
     <div>
       <input type="text" id="taskGroup" placeholder="Add a Task Group ID">
     </div>
+    <div>
+      <input type="number" id="costScalar" value="1" />
+      <label for="costScalar">Cost Scalar</label>
+    </div>
     <a href="https://docs.google.com/spreadsheets/d/1-mn60Kwp-IUJ99XfiUkxYv4DX-H6CQDwIUV4WnaykJk/edit#gid=118509819">Cost Estimates</a>
-    <div>
-      <input type="number" id="costPreemptibleGPU" />
-      <label for="costPreemptibleGPU">$/hr gpu (preemptible)</label>
-    </div>
-    <div>
-      <input type="number" id="costNonPreemptibleGPU" />
-      <label for="costNonPreemptibleGPU">$/hr gpu (nonpreemptible)</label>
-    </div>
-    <div>
-      <input type="number" id="costCpu" />
-      <label for="costCpu">$/hr cpu</label>
-    </div>
     <div>
       <input type="checkbox" id="fetchDependentTasks">
       <label for="fetchDependentTasks">Fetch dependent tasks</label>

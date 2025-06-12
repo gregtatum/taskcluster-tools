@@ -273,3 +273,16 @@ interface ArtifactText {
   path: string,
   text: string
 }
+
+declare type MachinePricing = Record<string, MachinePrice>
+
+declare interface MachinePrice {
+    machine_type: string,
+    vcpus: number,
+    memory_gb: number,
+    usd_per_hour: number,
+    gpu_type?: string,
+    gpu_count?: number,
+    gpu_cost_per_hour?: number,
+    total_gpu_cost?: number
+}

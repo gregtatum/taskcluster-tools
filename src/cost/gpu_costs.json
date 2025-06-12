@@ -1,0 +1,6 @@
+{
+  "nvidia-t4": 0.35,
+  "nvidia-p4": 0.6,
+  "nvidia-v100": 2.48,
+  "nvidia-p100": 1.46
+}

@@ -36,13 +36,7 @@ const elements = {
   breakdownCosts: /** @type {HTMLTableElement} */ (
     getElement('breakdownCosts')
   ),
-  costPreemptibleGPU: /** @type {HTMLInputElement} */ (
-    getElement('costPreemptibleGPU')
-  ),
-  costNonPreemptibleGPU: /** @type {HTMLInputElement} */ (
-    getElement('costNonPreemptibleGPU')
-  ),
-  costCpu: /** @type {HTMLInputElement} */ (getElement('costCpu')),
+  costScalar: /** @type {HTMLInputElement} */ (getElement('costScalar')),
 };
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -54,6 +48,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
 /** @type {Promise<TaskGroup[]>} */
 let taskGroupsPromise;
+
+/**
+ * @returns {Promise<MachinePricing>}
+ */
+async function fetchMachinePricing() {
+  const response = await fetch('machine_pricing.json');
+  return response.json();
+}
 
 async function main() {
   setupHandlers();
@@ -152,15 +154,7 @@ function setupHandlers() {
       urlParams.set(key, input.value);
       replaceLocation(urlParams);
 
-      localStorage.setItem(
-        'costPreemptibleGPU',
-        elements.costPreemptibleGPU.value,
-      );
-      localStorage.setItem(
-        'costNonPreemptibleGPU',
-        elements.costNonPreemptibleGPU.value,
-      );
-      localStorage.setItem('costCpu', elements.costCpu.value);
+      localStorage.setItem('costScalar', elements.costScalar.value);
 
       computeCost();
     };
@@ -171,32 +165,16 @@ function setupHandlers() {
     const urlParams = new URLSearchParams(window.location.search);
 
     // Initialize the values from the urlParams.
-    const costNonPreemptibleGPU =
-      urlParams.get('costNonPreemptibleGPU') ||
-      localStorage.getItem('costNonPreemptibleGPU');
-    if (costNonPreemptibleGPU) {
-      elements.costNonPreemptibleGPU.value = costNonPreemptibleGPU;
-    }
-    const costPreemptibleGPU =
-      urlParams.get('costPreemptibleGPU') ||
-      localStorage.getItem('costPreemptibleGPU');
-    if (costPreemptibleGPU) {
-      elements.costPreemptibleGPU.value = costPreemptibleGPU;
-    }
-    const costCpu = urlParams.get('costCpu') || localStorage.getItem('costCpu');
-    if (costCpu) {
-      elements.costCpu.value = costCpu;
+    const costScalar =
+      urlParams.get('costScalar') || localStorage.getItem('costScalar');
+    if (costScalar) {
+      elements.costScalar.value = costScalar;
     }
 
-    elements.costNonPreemptibleGPU.addEventListener(
+    elements.costScalar.addEventListener(
       'change',
-      handleCostChangeFn('costNonPreemptibleGPU'),
+      handleCostChangeFn('costScalar'),
     );
-    elements.costPreemptibleGPU.addEventListener(
-      'change',
-      handleCostChangeFn('costPreemptibleGPU'),
-    );
-    elements.costCpu.addEventListener('change', handleCostChangeFn('costCpu'));
   }
 
   elements.label.value = getLabel();
@@ -361,7 +339,8 @@ async function getVisibleTaskGroup() {
 
 async function computeCost() {
   const taskGroups = await getVisibleTaskGroup();
-  const { allCosts, breakdownCosts } = getCosts(taskGroups);
+  const machinePricing = await fetchMachinePricing();
+  const { allCosts, breakdownCosts } = getCosts(machinePricing, taskGroups);
   elements.costBreakdown.style.display = 'block';
 
   buildPieChart(breakdownCosts);
@@ -600,10 +579,24 @@ function addDependentTaskGroups(taskGroups) {
  * @property {string} cost
  */
 
+// /** @type {Record<string, number>} */
+// const costLookup = {
+//   'b-linux-large-gcp-1tb-32-256-d2g': 0.62,
+//   'b-linux-large-gcp-1tb-32-256-std-d2g': 1.2,
+//   'b-linux-large-gcp-d2g': 0.78,
+//   'b-linux-large-gcp-d2g-300gb': 0.57,
+//   'b-linux-v100-gpu': 0.9,
+//   'b-linux-v100-gpu-4': 3.11,
+//   'b-linux-v100-gpu-4-1tb': 3.55,
+//   'b-linux-v100-gpu-4-2tb': 3.46,
+//   'b-linux-v100-gpu-4-300gb': 3.5,
+// };
+
 /**
+ * @param {MachinePricing} machinePricing
  * @param {TaskAndStatus} task
  */
-function getWorkerCost(task) {
+function getWorkerCost(machinePricing, task) {
   const { workerType } = task.task;
 
   // Example CPU worker types
@@ -615,23 +608,33 @@ function getWorkerCost(task) {
   // Example GPU (non-preemptible)
   //   b-linux-large-gcp-1tb-standard
 
-  if (workerType.endsWith('-gpu') || workerType.includes('-gpu-')) {
-    // GPU machine.
-    return workerType.endsWith('-standard')
-      ? Number(elements.costNonPreemptibleGPU.value)
-      : Number(elements.costPreemptibleGPU.value);
-  }
+  const scalar = Number(elements.costScalar.value || 0);
 
-  // CPU machine
-  return Number(elements.costCpu.value);
+  const pricing = machinePricing[workerType];
+  if (!pricing) {
+    console.log(`No pricing found for`, workerType, machinePricing);
+    return 0;
+  }
+  return pricing.usd_per_hour * scalar;
+
+  // if (workerType.endsWith('-gpu') || workerType.includes('-gpu-')) {
+  //   // GPU machine.
+  //   return workerType.endsWith('-standard')
+  //     ? Number(elements.costNonPreemptibleGPU.value)
+  //     : Number(elements.costPreemptibleGPU.value);
+  // }
+
+  // // CPU machine
+  // return Number(elements.costCpu.value);
 }
 
 /**
+ * @param {MachinePricing} machinePricing
  * @param {TaskGroup[]} taskGroups
  * @returns {{allCosts: TimeCostBreakdown[], breakdownCosts: TimeCostBreakdown[]}}
  */
-function getCosts(taskGroups) {
-  const taskTimeRanges = getTaskTimeRanges(taskGroups);
+function getCosts(machinePricing, taskGroups) {
+  const taskTimeRanges = getTaskTimeRanges(machinePricing, taskGroups);
   const totalTimeAndCost = getTimeCostBreakdown('total', taskTimeRanges);
 
   /**
@@ -640,7 +643,10 @@ function getCosts(taskGroups) {
    * @returns {TimeCostBreakdown}
    */
   const filterTasks = (description, filterFn) =>
-    getTimeCostBreakdown(description, getTaskTimeRanges(taskGroups, filterFn));
+    getTimeCostBreakdown(
+      description,
+      getTaskTimeRanges(machinePricing, taskGroups, filterFn),
+    );
 
   /** @type {TimeCostBreakdown[]} */
   const allCosts = [
@@ -870,11 +876,12 @@ function humanizeDuration(ms) {
 }
 
 /**
+ * @param {MachinePricing} machinePricing
  * @param {TaskGroup[]} taskGroups
  * @param {(task: TaskAndStatus) => boolean} filterFn
  * @returns {TimeRangeCost[]}
  */
-function getTaskTimeRanges(taskGroups, filterFn = () => true) {
+function getTaskTimeRanges(machinePricing, taskGroups, filterFn = () => true) {
   /** @type {Array<TimeRangeCost | null>} */
   const timeRangeOrNull = taskGroups.flatMap((taskGroup) => {
     return taskGroup.tasks.flatMap((task) => {
@@ -893,7 +900,7 @@ function getTaskTimeRanges(taskGroups, filterFn = () => true) {
           start,
           end,
           state: run.state,
-          costPerHour: getWorkerCost(task),
+          costPerHour: getWorkerCost(machinePricing, task),
         };
         return timeRange;
       });

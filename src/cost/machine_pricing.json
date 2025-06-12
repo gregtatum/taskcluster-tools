@@ -1,0 +1,626 @@
+{
+  "build-decision": {
+    "machine_type": "n2-standard-2",
+    "vcpus": 2,
+    "memory_gb": 8,
+    "usd_per_hour": 0.097118
+  },
+  "b-linux-gcp": {
+    "machine_type": "c2-standard-16",
+    "vcpus": 16,
+    "memory_gb": 64,
+    "usd_per_hour": 0.835232
+  },
+  "b-linux-gcp-bug1962119-c2d": {
+    "machine_type": "c2d-standard-16"
+  },
+  "b-linux-gcp-bug1962119-c3d": {
+    "machine_type": "c3d-standard-16-lssd"
+  },
+  "b-linux-gcp-bug1962119-c4d-dw": {
+    "machine_type": "c4d-standard-16"
+  },
+  "b-linux-gcp-bug1962119-c2d-gw": {
+    "machine_type": "{cpu_series}-standard-16"
+  },
+  "b-linux-gcp-bug1962119-c3d-gw": {
+    "machine_type": "{cpu_series}-standard-16"
+  },
+  "b-linux-gcp-bug1962119-c4d-gw": {
+    "machine_type": "{cpu_series}-standard-16"
+  },
+  "b-linux-docker-alpha": {
+    "machine_type": "c2-standard-16",
+    "vcpus": 16,
+    "memory_gb": 64,
+    "usd_per_hour": 0.835232
+  },
+  "b-linux-gcp-test-bug-1882320": {
+    "machine_type": "c2-standard-16",
+    "vcpus": 16,
+    "memory_gb": 64,
+    "usd_per_hour": 0.835232
+  },
+  "b-linux-gcp-aarch64": {
+    "machine_type": "t2a-standard-16",
+    "vcpus": 16,
+    "memory_gb": 64,
+    "usd_per_hour": 0.616
+  },
+  "b-linux{suffix}": {
+    "machine_type": "c2-standard-4",
+    "vcpus": 4,
+    "memory_gb": 16,
+    "usd_per_hour": 0.208808
+  },
+  "b-linux-gcp-gw": {
+    "machine_type": "c2-standard-4",
+    "vcpus": 4,
+    "memory_gb": 16,
+    "usd_per_hour": 0.208808
+  },
+  "b-linux-large{suffix}": {
+    "machine_type": "n2-standard-32",
+    "vcpus": 32,
+    "memory_gb": 128,
+    "usd_per_hour": 1.553888
+  },
+  "b-linux-large-gcp-bug1962119": {
+    "machine_type": "n2d-standard-32",
+    "vcpus": 32,
+    "memory_gb": 128,
+    "usd_per_hour": 1.351872
+  },
+  "b-linux-large-gcp-d2g": {
+    "machine_type": "n2-highmem-32",
+    "vcpus": 32,
+    "memory_gb": 256,
+    "usd_per_hour": 2.096224
+  },
+  "b-linux-large-gcp-d2g-1tb": {
+    "machine_type": "n2-highmem-32",
+    "vcpus": 32,
+    "memory_gb": 256,
+    "usd_per_hour": 2.096224
+  },
+  "b-linux-large-gcp-d2g-1tb-standard": {
+    "machine_type": "n2-highmem-32",
+    "vcpus": 32,
+    "memory_gb": 256,
+    "usd_per_hour": 2.096224
+  },
+  "b-linux-large-gcp-d2g-300gb": {
+    "machine_type": "n2-highmem-32",
+    "vcpus": 32,
+    "memory_gb": 256,
+    "usd_per_hour": 2.096224
+  },
+  "b-linux-large-gcp-1tb-32-256-d2g": {
+    "machine_type": "n2-highmem-32",
+    "vcpus": 32,
+    "memory_gb": 256,
+    "usd_per_hour": 2.096224
+  },
+  "b-linux-large-gcp-1tb-32-256-std-d2g": {
+    "machine_type": "n2-highmem-32",
+    "vcpus": 32,
+    "memory_gb": 256,
+    "usd_per_hour": 2.096224
+  },
+  "b-linux-large-gcp-1tb-64-512-d2g": {
+    "machine_type": "n2-highmem-64",
+    "vcpus": 64,
+    "memory_gb": 512,
+    "usd_per_hour": 4.192448
+  },
+  "b-linux-large-gcp-1tb-64-512-std-d2g": {
+    "machine_type": "n2-highmem-64",
+    "vcpus": 64,
+    "memory_gb": 512,
+    "usd_per_hour": 4.192448
+  },
+  "b-linux-medium-gcp": {
+    "machine_type": "c2-standard-8",
+    "vcpus": 8,
+    "memory_gb": 32,
+    "usd_per_hour": 0.417616
+  },
+  "b-linux-xlarge-gcp": {
+    "machine_type": "n2-standard-64",
+    "vcpus": 64,
+    "memory_gb": 256,
+    "usd_per_hour": 3.107776
+  },
+  "b-linux-xlarge-gcp-bug1962119": {
+    "machine_type": "n2d-standard-64",
+    "vcpus": 64,
+    "memory_gb": 256,
+    "usd_per_hour": 2.703744
+  },
+  "b-linux-xlarge-gcp-bug1797804-c2": {
+    "machine_type": "c2-standard-60",
+    "vcpus": 60,
+    "memory_gb": 240,
+    "usd_per_hour": 3.13212
+  },
+  "decision-gcp": {
+    "machine_type": "n2-standard-2",
+    "vcpus": 2,
+    "memory_gb": 8,
+    "usd_per_hour": 0.097118
+  },
+  "images-gcp": {
+    "machine_type": "c2-standard-4",
+    "vcpus": 4,
+    "memory_gb": 16,
+    "usd_per_hour": 0.208808
+  },
+  "images-gcp-aarch64": {
+    "machine_type": "t2a-standard-4",
+    "vcpus": 4,
+    "memory_gb": 16,
+    "usd_per_hour": 0.154
+  },
+  "t-linux-xlarge-gcp": {
+    "machine_type": "n2-standard-4",
+    "vcpus": 4,
+    "memory_gb": 16,
+    "usd_per_hour": 0.194236
+  },
+  "t-linux-xlarge-source-gcp": {
+    "machine_type": "n2-standard-4",
+    "vcpus": 4,
+    "memory_gb": 16,
+    "usd_per_hour": 0.194236
+  },
+  "t-linux-xlarge-gcp-b1862675": {
+    "machine_type": "c2-standard-8",
+    "vcpus": 8,
+    "memory_gb": 32,
+    "usd_per_hour": 0.417616
+  },
+  "t-linux-xlarge-source-gcp-b1862675": {
+    "machine_type": "c2-standard-8",
+    "vcpus": 8,
+    "memory_gb": 32,
+    "usd_per_hour": 0.417616
+  },
+  "t-linux-xlarge-noscratch-gcp": {
+    "machine_type": "n2-standard-4",
+    "vcpus": 4,
+    "memory_gb": 16,
+    "usd_per_hour": 0.194236
+  },
+  "t-linux-xlarge-source-noscratch-gcp": {
+    "machine_type": "n2-standard-4",
+    "vcpus": 4,
+    "memory_gb": 16,
+    "usd_per_hour": 0.194236
+  },
+  "t-linux-xlarge-ns-gcp-b1862675": {
+    "machine_type": "c2-standard-8",
+    "vcpus": 8,
+    "memory_gb": 32,
+    "usd_per_hour": 0.417616
+  },
+  "t-linux-xlarge-source-ns-gcp-b1862675": {
+    "machine_type": "c2-standard-8",
+    "vcpus": 8,
+    "memory_gb": 32,
+    "usd_per_hour": 0.417616
+  },
+  "t-linux-kvm-gcp": {
+    "machine_type": "n2-standard-8",
+    "vcpus": 8,
+    "memory_gb": 32,
+    "usd_per_hour": 0.388472
+  },
+  "t-linux-kvm-noscratch-gcp": {
+    "machine_type": "n2-standard-8",
+    "vcpus": 8,
+    "memory_gb": 32,
+    "usd_per_hour": 0.388472
+  },
+  "t-linux-kvm-gcp-bug1862675": {
+    "machine_type": "c2-standard-8",
+    "vcpus": 8,
+    "memory_gb": 32,
+    "usd_per_hour": 0.417616
+  },
+  "t-linux-kvm-noscratch-gcp-bug1862675": {
+    "machine_type": "c2-standard-8",
+    "vcpus": 8,
+    "memory_gb": 32,
+    "usd_per_hour": 0.417616
+  },
+  "b-linux-kvm-gcp": {
+    "machine_type": "c2-standard-16",
+    "vcpus": 16,
+    "memory_gb": 64,
+    "usd_per_hour": 0.835232
+  },
+  "b-linux-2204-kvm-gcp": {
+    "machine_type": "c2-standard-4",
+    "vcpus": 4,
+    "memory_gb": 16,
+    "usd_per_hour": 0.208808
+  },
+  "t-linux-vm-2204-wayland": {
+    "machine_type": "n2-standard-2",
+    "vcpus": 2,
+    "memory_gb": 8,
+    "usd_per_hour": 0.097118
+  },
+  "t-linux-vm-2204-wayland-snap": {
+    "machine_type": "n2-standard-2",
+    "vcpus": 2,
+    "memory_gb": 8,
+    "usd_per_hour": 0.097118
+  },
+  "t-linux-2204-wayland": {
+    "machine_type": "c2-standard-4",
+    "vcpus": 4,
+    "memory_gb": 16,
+    "usd_per_hour": 0.208808
+  },
+  "t-linux-2204-wayland-snap": {
+    "machine_type": "c2-standard-4",
+    "vcpus": 4,
+    "memory_gb": 16,
+    "usd_per_hour": 0.208808
+  },
+  "t-linux-2204-wayland-relsre": {
+    "machine_type": "c2-standard-4",
+    "vcpus": 4,
+    "memory_gb": 16,
+    "usd_per_hour": 0.208808
+  },
+  "t-linux-2204-wayland-arm64-relsre": {
+    "machine_type": "t2a-standard-4",
+    "vcpus": 4,
+    "memory_gb": 16,
+    "usd_per_hour": 0.154
+  },
+  "t-linux-2404-wayland-relsre": {
+    "machine_type": "c2-standard-4",
+    "vcpus": 4,
+    "memory_gb": 16,
+    "usd_per_hour": 0.208808
+  },
+  "t-linux-2404-relsre": {
+    "machine_type": "c2-standard-4",
+    "vcpus": 4,
+    "memory_gb": 16,
+    "usd_per_hour": 0.208808
+  },
+  "t-linux-2404-headless-ssd-alpha": {
+    "machine_type": "c2-standard-4",
+    "vcpus": 4,
+    "memory_gb": 16,
+    "usd_per_hour": 0.208808
+  },
+  "t-linux-2404-headless-alpha": {
+    "machine_type": "c2-standard-4",
+    "vcpus": 4,
+    "memory_gb": 16,
+    "usd_per_hour": 0.208808
+  },
+  "t-linux-2404-headless-arm64-alpha": {
+    "machine_type": "t2a-standard-4",
+    "vcpus": 4,
+    "memory_gb": 16,
+    "usd_per_hour": 0.154
+  },
+  "t-linux-docker-kvm-alpha": {
+    "machine_type": "n2-standard-8",
+    "vcpus": 8,
+    "memory_gb": 32,
+    "usd_per_hour": 0.388472
+  },
+  "t-linux-2404-wayland": {
+    "machine_type": "c2-standard-4",
+    "vcpus": 4,
+    "memory_gb": 16,
+    "usd_per_hour": 0.208808
+  },
+  "t-linux-2404-wayland-snap": {
+    "machine_type": "c2-standard-4",
+    "vcpus": 4,
+    "memory_gb": 16,
+    "usd_per_hour": 0.208808
+  },
+  "t-linux-xlarge-2404-wayland": {
+    "machine_type": "c2-standard-8",
+    "vcpus": 8,
+    "memory_gb": 32,
+    "usd_per_hour": 0.417616
+  },
+  "t-linux-2204-wayland-root-exp": {
+    "machine_type": "n2-standard-2",
+    "vcpus": 2,
+    "memory_gb": 8,
+    "usd_per_hour": 0.097118
+  },
+  "t-linux-xlarge-2204-wayland": {
+    "machine_type": "c2-standard-8",
+    "vcpus": 8,
+    "memory_gb": 32,
+    "usd_per_hour": 0.417616
+  },
+  "b-linux-v100-gpu": {
+    "machine_type": "n1-highmem-8",
+    "vcpus": 8,
+    "memory_gb": 52,
+    "usd_per_hour": 2.953212,
+    "gpu_type": "nvidia-v100",
+    "gpu_count": 1,
+    "gpu_cost_per_hour": 2.48,
+    "total_gpu_cost": 2.48
+  },
+  "b-linux-v100-gpu-4": {
+    "machine_type": "n1-highmem-8",
+    "vcpus": 8,
+    "memory_gb": 52,
+    "usd_per_hour": 10.393212,
+    "gpu_type": "nvidia-v100",
+    "gpu_count": 4,
+    "gpu_cost_per_hour": 2.48,
+    "total_gpu_cost": 9.92
+  },
+  "b-linux-v100-gpu-4-300gb": {
+    "machine_type": "n1-custom-40-262144",
+    "vcpus": 40,
+    "memory_gb": 256.0,
+    "usd_per_hour": 12.385838,
+    "gpu_type": "nvidia-v100",
+    "gpu_count": 4,
+    "gpu_cost_per_hour": 2.48,
+    "total_gpu_cost": 9.92
+  },
+  "b-linux-v100-gpu-4-300gb-standard": {
+    "machine_type": "n1-custom-40-262144",
+    "vcpus": 40,
+    "memory_gb": 256.0,
+    "usd_per_hour": 12.385838,
+    "gpu_type": "nvidia-v100",
+    "gpu_count": 4,
+    "gpu_cost_per_hour": 2.48,
+    "total_gpu_cost": 9.92
+  },
+  "b-linux-v100-gpu-4-1tb-standard": {
+    "machine_type": "n1-custom-40-262144",
+    "vcpus": 40,
+    "memory_gb": 256.0,
+    "usd_per_hour": 12.385838,
+    "gpu_type": "nvidia-v100",
+    "gpu_count": 4,
+    "gpu_cost_per_hour": 2.48,
+    "total_gpu_cost": 9.92
+  },
+  "b-linux-v100-gpu-4-1tb": {
+    "machine_type": "n1-custom-40-262144",
+    "vcpus": 40,
+    "memory_gb": 256.0,
+    "usd_per_hour": 12.385838,
+    "gpu_type": "nvidia-v100",
+    "gpu_count": 4,
+    "gpu_cost_per_hour": 2.48,
+    "total_gpu_cost": 9.92
+  },
+  "b-linux-v100-gpu-4-2tb": {
+    "machine_type": "n1-custom-40-262144",
+    "vcpus": 40,
+    "memory_gb": 256.0,
+    "usd_per_hour": 12.385838,
+    "gpu_type": "nvidia-v100",
+    "gpu_count": 4,
+    "gpu_cost_per_hour": 2.48,
+    "total_gpu_cost": 9.92
+  },
+  "b-linux-v100-gpu-d2g": {
+    "machine_type": "n1-highmem-8",
+    "vcpus": 8,
+    "memory_gb": 52,
+    "usd_per_hour": 2.953212,
+    "gpu_type": "nvidia-v100",
+    "gpu_count": 1,
+    "gpu_cost_per_hour": 2.48,
+    "total_gpu_cost": 2.48
+  },
+  "b-linux-v100-gpu-d2g-alpha": {
+    "machine_type": "n1-highmem-8",
+    "vcpus": 8,
+    "memory_gb": 52,
+    "usd_per_hour": 2.953212,
+    "gpu_type": "nvidia-v100",
+    "gpu_count": 1,
+    "gpu_cost_per_hour": 2.48,
+    "total_gpu_cost": 2.48
+  },
+  "b-linux-v100-gpu-d2g-4": {
+    "machine_type": "n1-highmem-8",
+    "vcpus": 8,
+    "memory_gb": 52,
+    "usd_per_hour": 10.393212,
+    "gpu_type": "nvidia-v100",
+    "gpu_count": 4,
+    "gpu_cost_per_hour": 2.48,
+    "total_gpu_cost": 9.92
+  },
+  "b-linux-v100-gpu-d2g-4-alpha": {
+    "machine_type": "n1-highmem-8",
+    "vcpus": 8,
+    "memory_gb": 52,
+    "usd_per_hour": 10.393212,
+    "gpu_type": "nvidia-v100",
+    "gpu_count": 4,
+    "gpu_cost_per_hour": 2.48,
+    "total_gpu_cost": 9.92
+  },
+  "b-linux-v100-gpu-d2g-4-300gb": {
+    "machine_type": "n1-custom-40-262144",
+    "vcpus": 40,
+    "memory_gb": 256.0,
+    "usd_per_hour": 12.385838,
+    "gpu_type": "nvidia-v100",
+    "gpu_count": 4,
+    "gpu_cost_per_hour": 2.48,
+    "total_gpu_cost": 9.92
+  },
+  "b-linux-v100-gpu-d2g-4-300gb-alpha": {
+    "machine_type": "n1-custom-40-262144",
+    "vcpus": 40,
+    "memory_gb": 256.0,
+    "usd_per_hour": 12.385838,
+    "gpu_type": "nvidia-v100",
+    "gpu_count": 4,
+    "gpu_cost_per_hour": 2.48,
+    "total_gpu_cost": 9.92
+  },
+  "b-linux-v100-gpu-d2g-4-300gb-standard": {
+    "machine_type": "n1-custom-40-262144",
+    "vcpus": 40,
+    "memory_gb": 256.0,
+    "usd_per_hour": 12.385838,
+    "gpu_type": "nvidia-v100",
+    "gpu_count": 4,
+    "gpu_cost_per_hour": 2.48,
+    "total_gpu_cost": 9.92
+  },
+  "b-linux-v100-gpu-d2g-4-300gb-std-alpha": {
+    "machine_type": "n1-custom-40-262144",
+    "vcpus": 40,
+    "memory_gb": 256.0,
+    "usd_per_hour": 12.385838,
+    "gpu_type": "nvidia-v100",
+    "gpu_count": 4,
+    "gpu_cost_per_hour": 2.48,
+    "total_gpu_cost": 9.92
+  },
+  "b-linux-v100-gpu-d2g-4-1tb-standard": {
+    "machine_type": "n1-custom-40-262144",
+    "vcpus": 40,
+    "memory_gb": 256.0,
+    "usd_per_hour": 12.385838,
+    "gpu_type": "nvidia-v100",
+    "gpu_count": 4,
+    "gpu_cost_per_hour": 2.48,
+    "total_gpu_cost": 9.92
+  },
+  "b-linux-v100-gpu-d2g-4-1tb-std-alpha": {
+    "machine_type": "n1-custom-40-262144",
+    "vcpus": 40,
+    "memory_gb": 256.0,
+    "usd_per_hour": 12.385838,
+    "gpu_type": "nvidia-v100",
+    "gpu_count": 4,
+    "gpu_cost_per_hour": 2.48,
+    "total_gpu_cost": 9.92
+  },
+  "b-linux-v100-gpu-d2g-4-1tb": {
+    "machine_type": "n1-custom-40-262144",
+    "vcpus": 40,
+    "memory_gb": 256.0,
+    "usd_per_hour": 12.385838,
+    "gpu_type": "nvidia-v100",
+    "gpu_count": 4,
+    "gpu_cost_per_hour": 2.48,
+    "total_gpu_cost": 9.92
+  },
+  "b-linux-v100-gpu-d2g-4-1tb-alpha": {
+    "machine_type": "n1-custom-40-262144",
+    "vcpus": 40,
+    "memory_gb": 256.0,
+    "usd_per_hour": 12.385838,
+    "gpu_type": "nvidia-v100",
+    "gpu_count": 4,
+    "gpu_cost_per_hour": 2.48,
+    "total_gpu_cost": 9.92
+  },
+  "b-linux-v100-gpu-d2g-4-2tb": {
+    "machine_type": "n1-custom-40-262144",
+    "vcpus": 40,
+    "memory_gb": 256.0,
+    "usd_per_hour": 12.385838,
+    "gpu_type": "nvidia-v100",
+    "gpu_count": 4,
+    "gpu_cost_per_hour": 2.48,
+    "total_gpu_cost": 9.92
+  },
+  "b-linux-v100-gpu-d2g-4-2tb-alpha": {
+    "machine_type": "n1-custom-40-262144",
+    "vcpus": 40,
+    "memory_gb": 256.0,
+    "usd_per_hour": 12.385838,
+    "gpu_type": "nvidia-v100",
+    "gpu_count": 4,
+    "gpu_cost_per_hour": 2.48,
+    "total_gpu_cost": 9.92
+  },
+  "misc-gcp": {
+    "machine_type": "c2-standard-4",
+    "vcpus": 4,
+    "memory_gb": 16,
+    "usd_per_hour": 0.208808
+  },
+  "t-linux-large-gcp": {
+    "machine_type": "c2-standard-4",
+    "vcpus": 4,
+    "memory_gb": 16,
+    "usd_per_hour": 0.208808
+  },
+  "t-linux-docker": {
+    "machine_type": "c2-standard-4",
+    "vcpus": 4,
+    "memory_gb": 16,
+    "usd_per_hour": 0.208808
+  },
+  "t-linux-docker-kvm": {
+    "machine_type": "n2-standard-8",
+    "vcpus": 8,
+    "memory_gb": 32,
+    "usd_per_hour": 0.388472
+  },
+  "t-linux-arm64-docker": {
+    "machine_type": "t2a-standard-4",
+    "vcpus": 4,
+    "memory_gb": 16,
+    "usd_per_hour": 0.154
+  },
+  "t-linux-large-noscratch-gcp": {
+    "machine_type": "c2-standard-4",
+    "vcpus": 4,
+    "memory_gb": 16,
+    "usd_per_hour": 0.208808
+  },
+  "t-linux-docker-noscratch": {
+    "machine_type": "c2-standard-4",
+    "vcpus": 4,
+    "memory_gb": 16,
+    "usd_per_hour": 0.208808
+  },
+  "t-linux-large-hostub2204-gcp": {
+    "machine_type": "n2-standard-2",
+    "vcpus": 2,
+    "memory_gb": 8,
+    "usd_per_hour": 0.097118
+  },
+  "bot-gcp": {
+    "machine_type": "c2-standard-4",
+    "vcpus": 4,
+    "memory_gb": 16,
+    "usd_per_hour": 0.208808
+  },
+  "linux-gcp": {
+    "machine_type": "c2-standard-4",
+    "vcpus": 4,
+    "memory_gb": 16,
+    "usd_per_hour": 0.208808
+  },
+  "linux-gw-gcp": {
+    "machine_type": "c2-standard-4",
+    "vcpus": 4,
+    "memory_gb": 16,
+    "usd_per_hour": 0.208808
+  }
+}

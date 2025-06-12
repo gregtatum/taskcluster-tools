@@ -1,0 +1,1212 @@
+{
+  "c4-standard-2": {
+    "vcpus": 2,
+    "memory_gb": 7,
+    "usd_per_hour": 0.096866
+  },
+  "c4-standard-4": {
+    "vcpus": 4,
+    "memory_gb": 15,
+    "usd_per_hour": 0.19767
+  },
+  "c4-standard-8": {
+    "vcpus": 8,
+    "memory_gb": 30,
+    "usd_per_hour": 0.39534
+  },
+  "c4-standard-16": {
+    "vcpus": 16,
+    "memory_gb": 60,
+    "usd_per_hour": 0.79068
+  },
+  "c4-standard-32": {
+    "vcpus": 32,
+    "memory_gb": 120,
+    "usd_per_hour": 1.58136
+  },
+  "c4-standard-48": {
+    "vcpus": 48,
+    "memory_gb": 180,
+    "usd_per_hour": 2.37204
+  },
+  "c4-standard-96": {
+    "vcpus": 96,
+    "memory_gb": 360,
+    "usd_per_hour": 4.74408
+  },
+  "c4-standard-192": {
+    "vcpus": 192,
+    "memory_gb": 720,
+    "usd_per_hour": 9.48816
+  },
+  "c4-highmem-2": {
+    "vcpus": 2,
+    "memory_gb": 15,
+    "usd_per_hour": 0.12837
+  },
+  "c4-highmem-4": {
+    "vcpus": 4,
+    "memory_gb": 31,
+    "usd_per_hour": 0.260678
+  },
+  "c4-highmem-8": {
+    "vcpus": 8,
+    "memory_gb": 62,
+    "usd_per_hour": 0.521356
+  },
+  "c4-highmem-16": {
+    "vcpus": 16,
+    "memory_gb": 124,
+    "usd_per_hour": 1.042712
+  },
+  "c4-highmem-32": {
+    "vcpus": 32,
+    "memory_gb": 248,
+    "usd_per_hour": 2.085424
+  },
+  "c4-highmem-48": {
+    "vcpus": 48,
+    "memory_gb": 372,
+    "usd_per_hour": 3.128136
+  },
+  "c4-highmem-96": {
+    "vcpus": 96,
+    "memory_gb": 744,
+    "usd_per_hour": 6.256272
+  },
+  "c4-highmem-192": {
+    "vcpus": 192,
+    "memory_gb": 1488,
+    "usd_per_hour": 12.512544
+  },
+  "c4-highcpu-2": {
+    "vcpus": 2,
+    "memory_gb": 4,
+    "usd_per_hour": 0.085052
+  },
+  "c4-highcpu-4": {
+    "vcpus": 4,
+    "memory_gb": 8,
+    "usd_per_hour": 0.170104
+  },
+  "c4-highcpu-8": {
+    "vcpus": 8,
+    "memory_gb": 16,
+    "usd_per_hour": 0.340208
+  },
+  "c4-highcpu-16": {
+    "vcpus": 16,
+    "memory_gb": 32,
+    "usd_per_hour": 0.680416
+  },
+  "c4-highcpu-32": {
+    "vcpus": 32,
+    "memory_gb": 64,
+    "usd_per_hour": 1.360832
+  },
+  "c4-highcpu-48": {
+    "vcpus": 48,
+    "memory_gb": 96,
+    "usd_per_hour": 2.041248
+  },
+  "c4-highcpu-96": {
+    "vcpus": 96,
+    "memory_gb": 192,
+    "usd_per_hour": 4.082496
+  },
+  "c4-highcpu-192": {
+    "vcpus": 192,
+    "memory_gb": 384,
+    "usd_per_hour": 8.164992
+  },
+  "c4a-standard-1": {
+    "vcpus": 1,
+    "memory_gb": 4,
+    "usd_per_hour": 0.0449
+  },
+  "c4a-standard-2": {
+    "vcpus": 2,
+    "memory_gb": 8,
+    "usd_per_hour": 0.0898
+  },
+  "c4a-standard-4": {
+    "vcpus": 4,
+    "memory_gb": 16,
+    "usd_per_hour": 0.1796
+  },
+  "c4a-standard-8": {
+    "vcpus": 8,
+    "memory_gb": 32,
+    "usd_per_hour": 0.3592
+  },
+  "c4a-standard-16": {
+    "vcpus": 16,
+    "memory_gb": 64,
+    "usd_per_hour": 0.7184
+  },
+  "c4a-standard-32": {
+    "vcpus": 32,
+    "memory_gb": 128,
+    "usd_per_hour": 1.4368
+  },
+  "c4a-standard-48": {
+    "vcpus": 48,
+    "memory_gb": 192,
+    "usd_per_hour": 2.1552
+  },
+  "c4a-standard-64": {
+    "vcpus": 64,
+    "memory_gb": 256,
+    "usd_per_hour": 2.8736
+  },
+  "c4a-standard-72": {
+    "vcpus": 72,
+    "memory_gb": 288,
+    "usd_per_hour": 3.2328
+  },
+  "c4a-highmem-1": {
+    "vcpus": 1,
+    "memory_gb": 8,
+    "usd_per_hour": 0.05894
+  },
+  "c4a-highmem-2": {
+    "vcpus": 2,
+    "memory_gb": 16,
+    "usd_per_hour": 0.11788
+  },
+  "c4a-highmem-4": {
+    "vcpus": 4,
+    "memory_gb": 32,
+    "usd_per_hour": 0.23576
+  },
+  "c4a-highmem-8": {
+    "vcpus": 8,
+    "memory_gb": 64,
+    "usd_per_hour": 0.47152
+  },
+  "c4a-highmem-16": {
+    "vcpus": 16,
+    "memory_gb": 128,
+    "usd_per_hour": 0.94304
+  },
+  "c4a-highmem-32": {
+    "vcpus": 32,
+    "memory_gb": 256,
+    "usd_per_hour": 1.88608
+  },
+  "c4a-highmem-48": {
+    "vcpus": 48,
+    "memory_gb": 384,
+    "usd_per_hour": 2.82912
+  },
+  "c4a-highmem-64": {
+    "vcpus": 64,
+    "memory_gb": 512,
+    "usd_per_hour": 3.77216
+  },
+  "c4a-highmem-72": {
+    "vcpus": 72,
+    "memory_gb": 576,
+    "usd_per_hour": 4.24368
+  },
+  "c4a-highcpu-1": {
+    "vcpus": 1,
+    "memory_gb": 2,
+    "usd_per_hour": 0.03788
+  },
+  "c4a-highcpu-2": {
+    "vcpus": 2,
+    "memory_gb": 4,
+    "usd_per_hour": 0.07576
+  },
+  "c4a-highcpu-4": {
+    "vcpus": 4,
+    "memory_gb": 8,
+    "usd_per_hour": 0.15152
+  },
+  "c4a-highcpu-8": {
+    "vcpus": 8,
+    "memory_gb": 16,
+    "usd_per_hour": 0.30304
+  },
+  "c4a-highcpu-16": {
+    "vcpus": 16,
+    "memory_gb": 32,
+    "usd_per_hour": 0.60608
+  },
+  "c4a-highcpu-32": {
+    "vcpus": 32,
+    "memory_gb": 64,
+    "usd_per_hour": 1.21216
+  },
+  "c4a-highcpu-48": {
+    "vcpus": 48,
+    "memory_gb": 96,
+    "usd_per_hour": 1.81824
+  },
+  "c4a-highcpu-64": {
+    "vcpus": 64,
+    "memory_gb": 128,
+    "usd_per_hour": 2.42432
+  },
+  "c4a-highcpu-72": {
+    "vcpus": 72,
+    "memory_gb": 144,
+    "usd_per_hour": 2.72736
+  },
+  "n4-standard-2": {
+    "vcpus": 2,
+    "memory_gb": 8,
+    "usd_per_hour": 0.094772
+  },
+  "n4-standard-4": {
+    "vcpus": 4,
+    "memory_gb": 16,
+    "usd_per_hour": 0.189544
+  },
+  "n4-standard-8": {
+    "vcpus": 8,
+    "memory_gb": 32,
+    "usd_per_hour": 0.379088
+  },
+  "n4-standard-16": {
+    "vcpus": 16,
+    "memory_gb": 64,
+    "usd_per_hour": 0.758176
+  },
+  "n4-standard-32": {
+    "vcpus": 32,
+    "memory_gb": 128,
+    "usd_per_hour": 1.516352
+  },
+  "n4-standard-48": {
+    "vcpus": 48,
+    "memory_gb": 192,
+    "usd_per_hour": 2.274528
+  },
+  "n4-standard-64": {
+    "vcpus": 64,
+    "memory_gb": 256,
+    "usd_per_hour": 3.032704
+  },
+  "n4-standard-80": {
+    "vcpus": 80,
+    "memory_gb": 320,
+    "usd_per_hour": 3.79088
+  },
+  "n4-highmem-2": {
+    "vcpus": 2,
+    "memory_gb": 16,
+    "usd_per_hour": 0.124388
+  },
+  "n4-highmem-4": {
+    "vcpus": 4,
+    "memory_gb": 32,
+    "usd_per_hour": 0.248776
+  },
+  "n4-highmem-8": {
+    "vcpus": 8,
+    "memory_gb": 64,
+    "usd_per_hour": 0.497552
+  },
+  "n4-highmem-16": {
+    "vcpus": 16,
+    "memory_gb": 128,
+    "usd_per_hour": 0.995104
+  },
+  "n4-highmem-32": {
+    "vcpus": 32,
+    "memory_gb": 256,
+    "usd_per_hour": 1.990208
+  },
+  "n4-highmem-48": {
+    "vcpus": 48,
+    "memory_gb": 384,
+    "usd_per_hour": 2.985312
+  },
+  "n4-highmem-64": {
+    "vcpus": 64,
+    "memory_gb": 512,
+    "usd_per_hour": 3.980416
+  },
+  "n4-highmem-80": {
+    "vcpus": 80,
+    "memory_gb": 640,
+    "usd_per_hour": 4.97552
+  },
+  "n4-highcpu-2": {
+    "vcpus": 2,
+    "memory_gb": 4,
+    "usd_per_hour": 0.079964
+  },
+  "n4-highcpu-4": {
+    "vcpus": 4,
+    "memory_gb": 8,
+    "usd_per_hour": 0.159928
+  },
+  "n4-highcpu-8": {
+    "vcpus": 8,
+    "memory_gb": 16,
+    "usd_per_hour": 0.319856
+  },
+  "n4-highcpu-16": {
+    "vcpus": 16,
+    "memory_gb": 32,
+    "usd_per_hour": 0.639712
+  },
+  "n4-highcpu-32": {
+    "vcpus": 32,
+    "memory_gb": 64,
+    "usd_per_hour": 1.279424
+  },
+  "n4-highcpu-48": {
+    "vcpus": 48,
+    "memory_gb": 96,
+    "usd_per_hour": 1.90803
+  },
+  "n4-highcpu-64": {
+    "vcpus": 64,
+    "memory_gb": 128,
+    "usd_per_hour": 2.558848
+  },
+  "n4-highcpu-80": {
+    "vcpus": 80,
+    "memory_gb": 160,
+    "usd_per_hour": 3.19856
+  },
+  "c3-standard-4": {
+    "vcpus": 4,
+    "memory_gb": 16,
+    "usd_per_hour": 0.201608
+  },
+  "c3-standard-8": {
+    "vcpus": 8,
+    "memory_gb": 32,
+    "usd_per_hour": 0.403216
+  },
+  "c3-standard-22": {
+    "vcpus": 22,
+    "memory_gb": 88,
+    "usd_per_hour": 1.108844
+  },
+  "c3-standard-44": {
+    "vcpus": 44,
+    "memory_gb": 176,
+    "usd_per_hour": 2.217688
+  },
+  "c3-standard-88": {
+    "vcpus": 88,
+    "memory_gb": 352,
+    "usd_per_hour": 4.435376
+  },
+  "c3-standard-176": {
+    "vcpus": 176,
+    "memory_gb": 704,
+    "usd_per_hour": 8.870752
+  },
+  "c3-standard-192-metal": {
+    "vcpus": 192,
+    "memory_gb": 768,
+    "usd_per_hour": 9.677184
+  },
+  "c3-highmem-4": {
+    "vcpus": 4,
+    "memory_gb": 32,
+    "usd_per_hour": 0.264616
+  },
+  "c3-highmem-8": {
+    "vcpus": 8,
+    "memory_gb": 64,
+    "usd_per_hour": 0.529232
+  },
+  "c3-highmem-22": {
+    "vcpus": 22,
+    "memory_gb": 176,
+    "usd_per_hour": 1.455388
+  },
+  "c3-highmem-44": {
+    "vcpus": 44,
+    "memory_gb": 352,
+    "usd_per_hour": 2.910776
+  },
+  "c3-highmem-88": {
+    "vcpus": 88,
+    "memory_gb": 704,
+    "usd_per_hour": 5.821552
+  },
+  "c3-highmem-176": {
+    "vcpus": 176,
+    "memory_gb": 1408,
+    "usd_per_hour": 11.643104
+  },
+  "c3-highmem-192-metal": {
+    "vcpus": 192,
+    "memory_gb": 1536,
+    "usd_per_hour": 12.701568
+  },
+  "c3-highcpu-4": {
+    "vcpus": 4,
+    "memory_gb": 8,
+    "usd_per_hour": 0.170104
+  },
+  "c3-highcpu-8": {
+    "vcpus": 8,
+    "memory_gb": 16,
+    "usd_per_hour": 0.340208
+  },
+  "c3-highcpu-22": {
+    "vcpus": 22,
+    "memory_gb": 44,
+    "usd_per_hour": 0.935572
+  },
+  "c3-highcpu-44": {
+    "vcpus": 44,
+    "memory_gb": 88,
+    "usd_per_hour": 1.871144
+  },
+  "c3-highcpu-88": {
+    "vcpus": 88,
+    "memory_gb": 176,
+    "usd_per_hour": 3.742288
+  },
+  "c3-highcpu-176": {
+    "vcpus": 176,
+    "memory_gb": 352,
+    "usd_per_hour": 7.484576
+  },
+  "c3-highcpu-192-metal": {
+    "vcpus": 192,
+    "memory_gb": 512,
+    "usd_per_hour": 8.669056
+  },
+  "c3d-standard-4": {
+    "vcpus": 4,
+    "memory_gb": 16,
+    "usd_per_hour": 0.181596
+  },
+  "c3d-standard-8": {
+    "vcpus": 8,
+    "memory_gb": 32,
+    "usd_per_hour": 0.363192
+  },
+  "c3d-standard-16": {
+    "vcpus": 16,
+    "memory_gb": 64,
+    "usd_per_hour": 0.726384
+  },
+  "c3d-standard-30": {
+    "vcpus": 30,
+    "memory_gb": 120,
+    "usd_per_hour": 1.36197
+  },
+  "c3d-standard-60": {
+    "vcpus": 60,
+    "memory_gb": 240,
+    "usd_per_hour": 2.72394
+  },
+  "c3d-standard-90": {
+    "vcpus": 90,
+    "memory_gb": 360,
+    "usd_per_hour": 4.08591
+  },
+  "c3d-standard-180": {
+    "vcpus": 180,
+    "memory_gb": 720,
+    "usd_per_hour": 8.17182
+  },
+  "c3d-standard-360": {
+    "vcpus": 360,
+    "memory_gb": 1440,
+    "usd_per_hour": 16.34364
+  },
+  "c3d-highmem-4": {
+    "vcpus": 4,
+    "memory_gb": 32,
+    "usd_per_hour": 0.24494
+  },
+  "c3d-highmem-8": {
+    "vcpus": 8,
+    "memory_gb": 64,
+    "usd_per_hour": 0.48988
+  },
+  "c3d-highmem-16": {
+    "vcpus": 16,
+    "memory_gb": 128,
+    "usd_per_hour": 0.97976
+  },
+  "c3d-highmem-30": {
+    "vcpus": 30,
+    "memory_gb": 240,
+    "usd_per_hour": 1.83705
+  },
+  "c3d-highmem-60": {
+    "vcpus": 60,
+    "memory_gb": 480,
+    "usd_per_hour": 3.6741
+  },
+  "c3d-highmem-90": {
+    "vcpus": 90,
+    "memory_gb": 720,
+    "usd_per_hour": 5.51115
+  },
+  "c3d-highmem-180": {
+    "vcpus": 180,
+    "memory_gb": 1440,
+    "usd_per_hour": 11.0223
+  },
+  "c3d-highmem-360": {
+    "vcpus": 360,
+    "memory_gb": 2880,
+    "usd_per_hour": 22.0446
+  },
+  "c3d-highcpu-4": {
+    "vcpus": 4,
+    "memory_gb": 8,
+    "usd_per_hour": 0.149924
+  },
+  "c3d-highcpu-8": {
+    "vcpus": 8,
+    "memory_gb": 16,
+    "usd_per_hour": 0.299848
+  },
+  "c3d-highcpu-16": {
+    "vcpus": 16,
+    "memory_gb": 32,
+    "usd_per_hour": 0.599696
+  },
+  "c3d-highcpu-30": {
+    "vcpus": 30,
+    "memory_gb": 60,
+    "usd_per_hour": 1.12443
+  },
+  "c3d-highcpu-60": {
+    "vcpus": 60,
+    "memory_gb": 120,
+    "usd_per_hour": 2.24886
+  },
+  "c3d-highcpu-90": {
+    "vcpus": 90,
+    "memory_gb": 180,
+    "usd_per_hour": 3.37329
+  },
+  "c3d-highcpu-180": {
+    "vcpus": 180,
+    "memory_gb": 360,
+    "usd_per_hour": 6.74658
+  },
+  "c3d-highcpu-360": {
+    "vcpus": 360,
+    "memory_gb": 720,
+    "usd_per_hour": 13.49316
+  },
+  "e2-standard-2": {
+    "vcpus": 2,
+    "memory_gb": 8,
+    "usd_per_hour": 0.06701142
+  },
+  "e2-standard-4": {
+    "vcpus": 4,
+    "memory_gb": 16,
+    "usd_per_hour": 0.13402284
+  },
+  "e2-standard-8": {
+    "vcpus": 8,
+    "memory_gb": 32,
+    "usd_per_hour": 0.26804568
+  },
+  "e2-standard-16": {
+    "vcpus": 16,
+    "memory_gb": 64,
+    "usd_per_hour": 0.53609136
+  },
+  "e2-standard-32": {
+    "vcpus": 32,
+    "memory_gb": 128,
+    "usd_per_hour": 1.07218272
+  },
+  "e2-highmem-2": {
+    "vcpus": 2,
+    "memory_gb": 16,
+    "usd_per_hour": 0.09039966
+  },
+  "e2-highmem-4": {
+    "vcpus": 4,
+    "memory_gb": 32,
+    "usd_per_hour": 0.18079932
+  },
+  "e2-highmem-8": {
+    "vcpus": 8,
+    "memory_gb": 64,
+    "usd_per_hour": 0.36159864
+  },
+  "e2-highmem-16": {
+    "vcpus": 16,
+    "memory_gb": 128,
+    "usd_per_hour": 0.72319728
+  },
+  "e2-highcpu-2": {
+    "vcpus": 2,
+    "memory_gb": 2,
+    "usd_per_hour": 0.04947024
+  },
+  "e2-highcpu-4": {
+    "vcpus": 4,
+    "memory_gb": 4,
+    "usd_per_hour": 0.09894048
+  },
+  "e2-highcpu-8": {
+    "vcpus": 8,
+    "memory_gb": 8,
+    "usd_per_hour": 0.19788096
+  },
+  "e2-highcpu-16": {
+    "vcpus": 16,
+    "memory_gb": 16,
+    "usd_per_hour": 0.39576192
+  },
+  "e2-highcpu-32": {
+    "vcpus": 32,
+    "memory_gb": 32,
+    "usd_per_hour": 0.79152384
+  },
+  "n2-standard-2": {
+    "vcpus": 2,
+    "memory_gb": 8,
+    "usd_per_hour": 0.097118
+  },
+  "n2-standard-4": {
+    "vcpus": 4,
+    "memory_gb": 16,
+    "usd_per_hour": 0.194236
+  },
+  "n2-standard-8": {
+    "vcpus": 8,
+    "memory_gb": 32,
+    "usd_per_hour": 0.388472
+  },
+  "n2-standard-16": {
+    "vcpus": 16,
+    "memory_gb": 64,
+    "usd_per_hour": 0.776944
+  },
+  "n2-standard-32": {
+    "vcpus": 32,
+    "memory_gb": 128,
+    "usd_per_hour": 1.553888
+  },
+  "n2-standard-48": {
+    "vcpus": 48,
+    "memory_gb": 192,
+    "usd_per_hour": 2.330832
+  },
+  "n2-standard-64": {
+    "vcpus": 64,
+    "memory_gb": 256,
+    "usd_per_hour": 3.107776
+  },
+  "n2-standard-80": {
+    "vcpus": 80,
+    "memory_gb": 320,
+    "usd_per_hour": 3.88472
+  },
+  "n2-standard-96": {
+    "vcpus": 96,
+    "memory_gb": 384,
+    "usd_per_hour": 4.661664
+  },
+  "n2-standard-128": {
+    "vcpus": 128,
+    "memory_gb": 512,
+    "usd_per_hour": 6.215552
+  },
+  "n2-highmem-2": {
+    "vcpus": 2,
+    "memory_gb": 16,
+    "usd_per_hour": 0.131014
+  },
+  "n2-highmem-4": {
+    "vcpus": 4,
+    "memory_gb": 32,
+    "usd_per_hour": 0.262028
+  },
+  "n2-highmem-8": {
+    "vcpus": 8,
+    "memory_gb": 64,
+    "usd_per_hour": 0.524056
+  },
+  "n2-highmem-16": {
+    "vcpus": 16,
+    "memory_gb": 128,
+    "usd_per_hour": 1.048112
+  },
+  "n2-highmem-32": {
+    "vcpus": 32,
+    "memory_gb": 256,
+    "usd_per_hour": 2.096224
+  },
+  "n2-highmem-48": {
+    "vcpus": 48,
+    "memory_gb": 384,
+    "usd_per_hour": 3.144336
+  },
+  "n2-highmem-64": {
+    "vcpus": 64,
+    "memory_gb": 512,
+    "usd_per_hour": 4.192448
+  },
+  "n2-highmem-80": {
+    "vcpus": 80,
+    "memory_gb": 640,
+    "usd_per_hour": 5.24056
+  },
+  "n2-highmem-96": {
+    "vcpus": 96,
+    "memory_gb": 768,
+    "usd_per_hour": 6.288672
+  },
+  "n2-highmem-128": {
+    "vcpus": 128,
+    "memory_gb": 864,
+    "usd_per_hour": 7.706976
+  },
+  "n2-highcpu-2": {
+    "vcpus": 2,
+    "memory_gb": 2,
+    "usd_per_hour": 0.071696
+  },
+  "n2-highcpu-4": {
+    "vcpus": 4,
+    "memory_gb": 4,
+    "usd_per_hour": 0.143392
+  },
+  "n2-highcpu-8": {
+    "vcpus": 8,
+    "memory_gb": 8,
+    "usd_per_hour": 0.286784
+  },
+  "n2-highcpu-16": {
+    "vcpus": 16,
+    "memory_gb": 16,
+    "usd_per_hour": 0.573568
+  },
+  "n2-highcpu-32": {
+    "vcpus": 32,
+    "memory_gb": 32,
+    "usd_per_hour": 1.147136
+  },
+  "n2-highcpu-48": {
+    "vcpus": 48,
+    "memory_gb": 48,
+    "usd_per_hour": 1.720704
+  },
+  "n2-highcpu-64": {
+    "vcpus": 64,
+    "memory_gb": 64,
+    "usd_per_hour": 2.294272
+  },
+  "n2-highcpu-80": {
+    "vcpus": 80,
+    "memory_gb": 80,
+    "usd_per_hour": 2.86784
+  },
+  "n2-highcpu-96": {
+    "vcpus": 96,
+    "memory_gb": 96,
+    "usd_per_hour": 3.441408
+  },
+  "n2d-standard-2": {
+    "vcpus": 2,
+    "memory_gb": 8,
+    "usd_per_hour": 0.084492
+  },
+  "n2d-standard-4": {
+    "vcpus": 4,
+    "memory_gb": 16,
+    "usd_per_hour": 0.168984
+  },
+  "n2d-standard-8": {
+    "vcpus": 8,
+    "memory_gb": 32,
+    "usd_per_hour": 0.337968
+  },
+  "n2d-standard-16": {
+    "vcpus": 16,
+    "memory_gb": 64,
+    "usd_per_hour": 0.675936
+  },
+  "n2d-standard-32": {
+    "vcpus": 32,
+    "memory_gb": 128,
+    "usd_per_hour": 1.351872
+  },
+  "n2d-standard-48": {
+    "vcpus": 48,
+    "memory_gb": 192,
+    "usd_per_hour": 2.027808
+  },
+  "n2d-standard-64": {
+    "vcpus": 64,
+    "memory_gb": 256,
+    "usd_per_hour": 2.703744
+  },
+  "n2d-standard-80": {
+    "vcpus": 80,
+    "memory_gb": 320,
+    "usd_per_hour": 3.37968
+  },
+  "n2d-standard-96": {
+    "vcpus": 96,
+    "memory_gb": 384,
+    "usd_per_hour": 4.055616
+  },
+  "n2d-standard-128": {
+    "vcpus": 128,
+    "memory_gb": 512,
+    "usd_per_hour": 5.407488
+  },
+  "n2d-standard-224": {
+    "vcpus": 224,
+    "memory_gb": 896,
+    "usd_per_hour": 9.463104
+  },
+  "n2d-highmem-2": {
+    "vcpus": 2,
+    "memory_gb": 16,
+    "usd_per_hour": 0.11398
+  },
+  "n2d-highmem-4": {
+    "vcpus": 4,
+    "memory_gb": 32,
+    "usd_per_hour": 0.22796
+  },
+  "n2d-highmem-8": {
+    "vcpus": 8,
+    "memory_gb": 64,
+    "usd_per_hour": 0.45592
+  },
+  "n2d-highmem-16": {
+    "vcpus": 16,
+    "memory_gb": 128,
+    "usd_per_hour": 0.91184
+  },
+  "n2d-highmem-32": {
+    "vcpus": 32,
+    "memory_gb": 256,
+    "usd_per_hour": 1.82368
+  },
+  "n2d-highmem-48": {
+    "vcpus": 48,
+    "memory_gb": 384,
+    "usd_per_hour": 2.73552
+  },
+  "n2d-highmem-64": {
+    "vcpus": 64,
+    "memory_gb": 512,
+    "usd_per_hour": 3.64736
+  },
+  "n2d-highmem-80": {
+    "vcpus": 80,
+    "memory_gb": 640,
+    "usd_per_hour": 4.5592
+  },
+  "n2d-highmem-96": {
+    "vcpus": 96,
+    "memory_gb": 768,
+    "usd_per_hour": 5.47104
+  },
+  "n2d-highcpu-2": {
+    "vcpus": 2,
+    "memory_gb": 2,
+    "usd_per_hour": 0.062376
+  },
+  "n2d-highcpu-4": {
+    "vcpus": 4,
+    "memory_gb": 4,
+    "usd_per_hour": 0.124752
+  },
+  "n2d-highcpu-8": {
+    "vcpus": 8,
+    "memory_gb": 8,
+    "usd_per_hour": 0.249504
+  },
+  "n2d-highcpu-16": {
+    "vcpus": 16,
+    "memory_gb": 16,
+    "usd_per_hour": 0.499008
+  },
+  "n2d-highcpu-32": {
+    "vcpus": 32,
+    "memory_gb": 32,
+    "usd_per_hour": 0.998016
+  },
+  "n2d-highcpu-48": {
+    "vcpus": 48,
+    "memory_gb": 48,
+    "usd_per_hour": 1.497024
+  },
+  "n2d-highcpu-64": {
+    "vcpus": 64,
+    "memory_gb": 64,
+    "usd_per_hour": 1.996032
+  },
+  "n2d-highcpu-80": {
+    "vcpus": 80,
+    "memory_gb": 80,
+    "usd_per_hour": 2.49504
+  },
+  "n2d-highcpu-96": {
+    "vcpus": 96,
+    "memory_gb": 96,
+    "usd_per_hour": 2.994048
+  },
+  "n2d-highcpu-128": {
+    "vcpus": 128,
+    "memory_gb": 128,
+    "usd_per_hour": 3.992064
+  },
+  "n2d-highcpu-224": {
+    "vcpus": 224,
+    "memory_gb": 224,
+    "usd_per_hour": 6.986112
+  },
+  "Predefined vCPUs": {
+    "vcpus": null,
+    "memory_gb": null,
+    "usd_per_hour": 0.012376
+  },
+  "Predefined Memory": {
+    "vcpus": null,
+    "memory_gb": 1,
+    "usd_per_hour": 0.001659
+  },
+  "t2d-standard-1": {
+    "vcpus": 1,
+    "memory_gb": 4,
+    "usd_per_hour": 0.042246
+  },
+  "t2d-standard-2": {
+    "vcpus": 2,
+    "memory_gb": 8,
+    "usd_per_hour": 0.084492
+  },
+  "t2d-standard-4": {
+    "vcpus": 4,
+    "memory_gb": 16,
+    "usd_per_hour": 0.168984
+  },
+  "t2d-standard-8": {
+    "vcpus": 8,
+    "memory_gb": 32,
+    "usd_per_hour": 0.337968
+  },
+  "t2d-standard-16": {
+    "vcpus": 16,
+    "memory_gb": 64,
+    "usd_per_hour": 0.675936
+  },
+  "t2d-standard-32": {
+    "vcpus": 32,
+    "memory_gb": 128,
+    "usd_per_hour": 1.351872
+  },
+  "t2d-standard-48": {
+    "vcpus": 48,
+    "memory_gb": 192,
+    "usd_per_hour": 2.027808
+  },
+  "t2d-standard-60": {
+    "vcpus": 60,
+    "memory_gb": 240,
+    "usd_per_hour": 2.53476
+  },
+  "t2a-standard-1": {
+    "vcpus": 1,
+    "memory_gb": 4,
+    "usd_per_hour": 0.0385
+  },
+  "t2a-standard-2": {
+    "vcpus": 2,
+    "memory_gb": 8,
+    "usd_per_hour": 0.077
+  },
+  "t2a-standard-4": {
+    "vcpus": 4,
+    "memory_gb": 16,
+    "usd_per_hour": 0.154
+  },
+  "t2a-standard-8": {
+    "vcpus": 8,
+    "memory_gb": 32,
+    "usd_per_hour": 0.308
+  },
+  "t2a-standard-16": {
+    "vcpus": 16,
+    "memory_gb": 64,
+    "usd_per_hour": 0.616
+  },
+  "t2a-standard-32": {
+    "vcpus": 32,
+    "memory_gb": 128,
+    "usd_per_hour": 1.232
+  },
+  "t2a-standard-48": {
+    "vcpus": 48,
+    "memory_gb": 192,
+    "usd_per_hour": 1.848
+  },
+  "n1-standard-1": {
+    "vcpus": 1,
+    "memory_gb": 3.75,
+    "usd_per_hour": 0.04749975
+  },
+  "n1-standard-2": {
+    "vcpus": 2,
+    "memory_gb": 7.5,
+    "usd_per_hour": 0.0949995
+  },
+  "n1-standard-4": {
+    "vcpus": 4,
+    "memory_gb": 15,
+    "usd_per_hour": 0.189999
+  },
+  "n1-standard-8": {
+    "vcpus": 8,
+    "memory_gb": 30,
+    "usd_per_hour": 0.379998
+  },
+  "n1-standard-16": {
+    "vcpus": 16,
+    "memory_gb": 60,
+    "usd_per_hour": 0.759996
+  },
+  "n1-standard-32": {
+    "vcpus": 32,
+    "memory_gb": 120,
+    "usd_per_hour": 1.519992
+  },
+  "n1-standard-64": {
+    "vcpus": 64,
+    "memory_gb": 240,
+    "usd_per_hour": 3.039984
+  },
+  "n1-standard-96 Skylake Platform only": {
+    "vcpus": 96,
+    "memory_gb": 360,
+    "usd_per_hour": 4.559976
+  },
+  "n1-highmem-2": {
+    "vcpus": 2,
+    "memory_gb": 13,
+    "usd_per_hour": 0.118303
+  },
+  "n1-highmem-4": {
+    "vcpus": 4,
+    "memory_gb": 26,
+    "usd_per_hour": 0.236606
+  },
+  "n1-highmem-8": {
+    "vcpus": 8,
+    "memory_gb": 52,
+    "usd_per_hour": 0.473212
+  },
+  "n1-highmem-16": {
+    "vcpus": 16,
+    "memory_gb": 104,
+    "usd_per_hour": 0.946424
+  },
+  "n1-highmem-32": {
+    "vcpus": 32,
+    "memory_gb": 208,
+    "usd_per_hour": 1.892848
+  },
+  "n1-highmem-64": {
+    "vcpus": 64,
+    "memory_gb": 416,
+    "usd_per_hour": 3.785696
+  },
+  "n1-highmem-96 Skylake Platform only": {
+    "vcpus": 96,
+    "memory_gb": 624,
+    "usd_per_hour": 5.678544
+  },
+  "n1-highcpu-2": {
+    "vcpus": 2,
+    "memory_gb": 1.8,
+    "usd_per_hour": 0.0708486
+  },
+  "n1-highcpu-4": {
+    "vcpus": 4,
+    "memory_gb": 3.6,
+    "usd_per_hour": 0.1416972
+  },
+  "n1-highcpu-8": {
+    "vcpus": 8,
+    "memory_gb": 7.2,
+    "usd_per_hour": 0.2833944
+  },
+  "n1-highcpu-16": {
+    "vcpus": 16,
+    "memory_gb": 14.4,
+    "usd_per_hour": 0.5667888
+  },
+  "n1-highcpu-32": {
+    "vcpus": 32,
+    "memory_gb": 28.8,
+    "usd_per_hour": 1.1335776
+  },
+  "n1-highcpu-64": {
+    "vcpus": 64,
+    "memory_gb": 57.6,
+    "usd_per_hour": 2.2671552
+  },
+  "n1-highcpu-96 Skylake Platform only": {
+    "vcpus": 96,
+    "memory_gb": 86.4,
+    "usd_per_hour": 3.4007328
+  },
+  "Compute-optimized Cores": {
+    "vcpus": null,
+    "memory_gb": null,
+    "usd_per_hour": 0.02647
+  },
+  "Compute-optimized Memory": {
+    "vcpus": null,
+    "memory_gb": 1,
+    "usd_per_hour": 0.00178
+  },
+  "c2-standard-4": {
+    "vcpus": 4,
+    "memory_gb": 16,
+    "usd_per_hour": 0.208808
+  },
+  "c2-standard-8": {
+    "vcpus": 8,
+    "memory_gb": 32,
+    "usd_per_hour": 0.417616
+  },
+  "c2-standard-16": {
+    "vcpus": 16,
+    "memory_gb": 64,
+    "usd_per_hour": 0.835232
+  },
+  "c2-standard-30": {
+    "vcpus": 30,
+    "memory_gb": 120,
+    "usd_per_hour": 1.56606
+  },
+  "c2-standard-60": {
+    "vcpus": 60,
+    "memory_gb": 240,
+    "usd_per_hour": 3.13212
+  },
+  "f1-micro": {
+    "vcpus": 0,
+    "memory_gb": 0.6,
+    "usd_per_hour": 0.0076
+  },
+  "g1-small": {
+    "vcpus": 0,
+    "memory_gb": 1.7,
+    "usd_per_hour": 0.0257
+  }
+}
