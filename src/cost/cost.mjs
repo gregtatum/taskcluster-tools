@@ -54,7 +54,17 @@ let taskGroupsPromise;
  */
 async function fetchMachinePricing() {
   const response = await fetch('machine_pricing.json');
-  return response.json();
+  /** @type {MachinePricing} */
+  const machinePricing = await response.json();
+  for (const [key, value] of [...Object.entries(machinePricing)]) {
+    // Workers are being replaced by -d2g variants, map back to the historical versions
+    // too.
+    let key2 = key.replaceAll('-d2g', '');
+    if (!machinePricing[key2]) {
+      machinePricing[key2] = value;
+    }
+  }
+  return machinePricing;
 }
 
 async function main() {
