@@ -341,6 +341,7 @@ function buildTable(db) {
 /**
  * @typedef {object} ScoreDetails
  * @prop {string} langPair
+ * @prop {string} langPairKey
  * @prop {number | null} score
  * @prop {Date} created
  * @prop {string} taskId
@@ -382,25 +383,26 @@ function updateScores() {
      */
     const latestScores = new Map();
     for (const scoreDetails of scoresList) {
-      const latestScoreDetails = latestScores.get(scoreDetails.langPair);
+      const latestScoreDetails = latestScores.get(scoreDetails.langPairKey);
       if (
         !latestScoreDetails ||
         scoreDetails.created > latestScoreDetails.created
       ) {
-        latestScores.set(scoreDetails.langPair, scoreDetails);
+        latestScores.set(scoreDetails.langPairKey, scoreDetails);
       }
     }
 
     // Update the COMET scores for a TD, or note that an eval score is still needed.
     for (const {
       langPair,
+      langPairKey,
       score,
       provider,
       taskId,
       dataset,
     } of latestScores.values()) {
       for (const element of Array.from(
-        document.querySelectorAll(`[data-${key}=${langPair}]`),
+        document.querySelectorAll(`[data-${key}=${langPairKey}]`),
       )) {
         const td = /** @type {HTMLTableCellElement} */ (element);
         if (score === null) {
@@ -788,6 +790,7 @@ async function buildTableRow(
             if (score) {
               scoreList.push({
                 langPair,
+                langPairKey,
                 score,
                 created: new Date(evalTask.task.created),
                 taskId,
@@ -813,14 +816,16 @@ async function buildTableRow(
     } else if (trainTask) {
       scoreList.push({
         langPair,
+        langPairKey,
         score: null,
         created: new Date(trainTask.task.created),
         taskId: trainTask.status.taskId,
         provider: null,
+        dataset: null,
       });
     }
 
-    td.setAttribute(`data-${name}`, langPair);
+    td.setAttribute(`data-${name}`, langPairKey);
   }
 
   console.log(langPair, tasks);
@@ -1095,7 +1100,7 @@ async function getExperimentName(db, trainActionTask) {
   const text = await getConfigText(db, trainActionTask);
   const experimentText = text.split('\nexperiment:\n')[1] ?? '';
   const nameText = experimentText.split('name:')[1] ?? '';
-  return nameText.split('\n')[0] ?? '';
+  return (nameText.split('\n')[0] ?? '').trim();
 }
 
 /**
