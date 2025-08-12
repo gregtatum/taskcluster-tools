@@ -267,6 +267,7 @@ async function fetchModel(url) {
 async function processUnknownArrayBuffer(arrayBuffer, fileName) {
   try {
     const { byteLength } = arrayBuffer;
+    /** @type {Record<string, DataArrays>} */
     let arrays;
     try {
       arrays = parseMarianBinaryFile(arrayBuffer);
@@ -278,11 +279,28 @@ async function processUnknownArrayBuffer(arrayBuffer, fileName) {
     updateStatus('Determining compressed size…');
     const compressedSize = await getCompressedSize(arrayBuffer);
     elements.status.style.display = 'hidden';
-    displayArrays(arrays, byteLength, compressedSize, fileName);
+    const inMemorySize = getInMemorySize(arrays);
+    displayArrays(arrays, byteLength, compressedSize, inMemorySize, fileName);
   } catch (error) {
     console.error(error);
     updateStatus('Failed to process the file. See the web console.');
   }
+}
+
+/**
+ * The embedding weights are unquantized in memory. Take that into account when
+ * computing the in-memory size.
+ *
+ * @param {Record<string, DataArrays>} arrays
+ * @returns {number}
+ */
+function getInMemorySize(arrays) {
+  let size = 0;
+  for (const [name, array] of Object.entries(arrays)) {
+    const multiplier = name.startsWith('Wemb') ? 4 : 1;
+    size += array.data.byteLength * multiplier;
+  }
+  return size;
 }
 
 /**
@@ -316,9 +334,16 @@ async function handleFileDrop(file) {
  * @param {Record<string, DataArrays>} arrays
  * @param {number} byteSize
  * @param {number} compressedSize
+ * @param {number} inMemorySize
  * @param {string} fileName
  */
-function displayArrays(arrays, byteSize, compressedSize, fileName) {
+function displayArrays(
+  arrays,
+  byteSize,
+  compressedSize,
+  inMemorySize,
+  fileName,
+) {
   elements.results.style.display = 'block';
 
   let configText = '';
@@ -395,6 +420,12 @@ function displayArrays(arrays, byteSize, compressedSize, fileName) {
     const { createTD } = createTableRow(elements.tbodyDetails);
     createTD('Model size');
     createTD(formatMB(byteSize));
+  }
+  {
+    const { createTD } = createTableRow(elements.tbodyDetails);
+    createTD('In memory size');
+    const td = createTD(formatMB(inMemorySize) + ' after dequantizing weights');
+    td.title = inMemorySize.toLocaleString() + ' bytes';
   }
   {
     const { createTD } = createTableRow(elements.tbodyDetails);

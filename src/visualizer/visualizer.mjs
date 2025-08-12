@@ -35,6 +35,7 @@ const elements = {
   taskGroup: /** @type {HTMLInputElement} */ (getElement('taskGroup')),
   mergeChunks: /** @type {HTMLInputElement} */ (getElement('mergeChunks')),
   hideToolchain: /** @type {HTMLInputElement} */ (getElement('hideToolchain')),
+  showLabels: /** @type {HTMLInputElement} */ (getElement('showLabels')),
   fetchDependentTasks: /** @type {HTMLInputElement} */ (
     getElement('fetchDependentTasks')
   ),
@@ -71,6 +72,8 @@ async function loadTaskGraphJSON(taskGraph) {
   if (getIsHideToolchain()) {
     tasks = tasks.filter(isNotToolchainTask);
   }
+
+  tasks = tasks.filter(isNotAllPipeline);
 
   exposeAsGlobal('taskGraph', taskGraph);
   exposeAsGlobal('tasks', tasks);
@@ -406,6 +409,13 @@ function setupHandlers() {
     changeLocation(urlParams);
   });
 
+  elements.showLabels.checked = getShowLabels();
+  elements.showLabels.addEventListener('click', () => {
+    const urlParams = new URLSearchParams(window.location.search);
+    urlParams.set('showLabels', elements.showLabels.checked.toString());
+    changeLocation(urlParams);
+  });
+
   elements.fetchDependentTasks.checked = getFetchDependentTasks();
   elements.fetchDependentTasks.addEventListener('click', () => {
     const urlParams = new URLSearchParams(window.location.search);
@@ -555,6 +565,16 @@ function getIsMergeChunks() {
 function getIsHideToolchain() {
   const urlParams = new URLSearchParams(window.location.search);
   return urlParams.get('hideToolchain') === 'true';
+}
+
+/**
+ * Should the labels always be shown?
+ *
+ * @returns {boolean}
+ */
+function getShowLabels() {
+  const urlParams = new URLSearchParams(window.location.search);
+  return urlParams.get('showLabels') === 'true';
 }
 
 /**
@@ -1061,6 +1081,7 @@ function render(tasks, isTaskGraphDefinition) {
     .attr('stroke-width', 1)
     .attr('marker-end', 'url(#arrowhead)');
 
+  // Create the circle node.
   const node = svg
     .append('g')
     .attr('stroke', '#fff')
@@ -1076,7 +1097,9 @@ function render(tasks, isTaskGraphDefinition) {
     })
     .on('mouseout', (_event, _d) => {
       const d = asNode(_d);
-      label.filter((labelD) => labelD.id === d.id).style('opacity', 0);
+      if (!showLabels) {
+        label.filter((labelD) => labelD.id === d.id).style('opacity', 0);
+      }
     })
     .on('dblclick', (_event, _d) => {
       const d = asNode(_d);
@@ -1209,7 +1232,10 @@ function render(tasks, isTaskGraphDefinition) {
 
   node.call(asAny(nodeDrag));
 
+  const showLabels = getShowLabels();
+
   const label = svg
+    .append('g')
     .selectAll(null)
     .data(nodes)
     .enter()
@@ -1219,7 +1245,7 @@ function render(tasks, isTaskGraphDefinition) {
     .attr('dx', 15)
     .attr('dy', 4)
     .style('pointer-events', 'none')
-    .style('opacity', 0)
+    .style('opacity', showLabels ? 1 : 0)
     .style('font-family', 'sans-serif')
     .style('filter', 'url(#solid)');
 
@@ -1229,12 +1255,9 @@ function render(tasks, isTaskGraphDefinition) {
       </marker>
     `);
 
-  // Reorder nodes and labels
-  svg.selectAll('text').raise();
-
   svg.append('defs').html(`
       <filter x="0" y="0" width="1" height="1" id="solid">
-        <feFlood flood-color="white" result="bg" />
+        <feFlood flood-color="#ffffffaa" result="bg" />
         <feMerge>
           <feMergeNode in="bg"/>
           <feMergeNode in="SourceGraphic"/>
@@ -1403,4 +1426,16 @@ function isNotToolchainTask({ task }) {
     label.startsWith('fetch-') ||
     label.startsWith('docker-')
   );
+}
+
+/**
+ * @param {TaskAndStatus} taskAndStatus
+ * @returns {boolean}
+ */
+function isNotAllPipeline({ task }) {
+  const { label } = task.tags;
+  if (!label) {
+    return true;
+  }
+  return !label.startsWith('all-');
 }
